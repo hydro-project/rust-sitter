@@ -46,9 +46,7 @@ fn gen_leaf(path: String, leaf: Field, out: &mut Vec<Item>) {
         .parse_args_with(Punctuated::<NameValueExpr, Token![,]>::parse_terminated)
         .unwrap();
 
-    let transform_param = leaf_params
-        .iter()
-        .find(|param| param.path == "transform");
+    let transform_param = leaf_params.iter().find(|param| param.path == "transform");
     let leaf_expr = match transform_param {
         Some(t) => {
             let closure = &t.expr;
@@ -116,45 +114,64 @@ fn gen_enum_variant(path: String, variant: Variant, out: &mut Vec<Item>) {
 
 fn expand_grammar(input: ItemMod) -> ItemMod {
     let (brace, new_contents) = input.content.unwrap();
-    let mut transformed: Vec<Item> = new_contents.iter().cloned().flat_map(|c| match c {
-        Item::Enum(mut e) => {
-            let mut impl_body = vec![];
-            e.variants.iter().for_each(|v| gen_enum_variant(
-                format!("{}_{}", e.ident, v.ident),
-                v.clone(), &mut impl_body
-            ));
-
-            e.attrs.retain(|a| !is_sitter_attr(a));
-            e.variants.iter_mut().for_each(|v| {
-                v.attrs.retain(|a| !is_sitter_attr(a));
-                v.fields.iter_mut().for_each(|f| {
-                    f.attrs.retain(|a| !is_sitter_attr(a));
+    let mut transformed: Vec<Item> = new_contents
+        .iter()
+        .cloned()
+        .flat_map(|c| match c {
+            Item::Enum(mut e) => {
+                let mut impl_body = vec![];
+                e.variants.iter().for_each(|v| {
+                    gen_enum_variant(
+                        format!("{}_{}", e.ident, v.ident),
+                        v.clone(),
+                        &mut impl_body,
+                    )
                 });
-            });
 
-            let enum_name = &e.ident;
+                let extract_ident = Ident::new(&format!("extract_{}", e.ident), e.span());
+                let mut match_cases: Vec<Arm> = vec![];
+                e.variants.iter().for_each(|v| {
+                    let variant_path = format!("{}_{}", e.ident, v.ident);
+                    let extract_ident = Ident::new(&format!("extract_{}", variant_path), v.span());
+                    match_cases.push(syn::parse_quote! {
+                        #variant_path => Self::#extract_ident(node.child(0).unwrap(), source)
+                    });
+                });
 
-            vec![
-                syn::parse_quote! {
-                    #e
-                },
-                syn::parse_quote! {
-                    impl #enum_name {
-                        #(#impl_body)*
-
-                        fn extract_Expression(node: tree_sitter::Node, source: &[u8]) -> Self {
-                            match node.child(0).unwrap().kind() {
-                                "Expression_Number" => Self::extract_Expression_Number(node.child(0).unwrap(), source),
-                                _ => panic!()
-                            }
+                impl_body.push(syn::parse_quote! {
+                    fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> Self {
+                        match node.child(0).unwrap().kind() {
+                            #(#match_cases),*,
+                            _ => panic!()
                         }
                     }
-                }
-            ]
-        }
+                });
 
-        _ => panic!()
-    }).collect();
+                e.attrs.retain(|a| !is_sitter_attr(a));
+                e.variants.iter_mut().for_each(|v| {
+                    v.attrs.retain(|a| !is_sitter_attr(a));
+                    v.fields.iter_mut().for_each(|f| {
+                        f.attrs.retain(|a| !is_sitter_attr(a));
+                    });
+                });
+
+                let enum_name = &e.ident;
+
+                vec![
+                    syn::parse_quote! {
+                        #e
+                    },
+                    syn::parse_quote! {
+                        impl #enum_name {
+                            #(#impl_body)*
+                        }
+                    },
+                ]
+            }
+
+            _ => panic!(),
+        })
+        .collect();
 
     transformed.push(syn::parse_quote! {
         extern "C" {
