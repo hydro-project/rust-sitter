@@ -26,12 +26,22 @@ pub fn generate_grammar(root_file: &Path) -> std::io::Result<String> {
             ]
         },
         "Expression_Number": {
+            "type": "SEQ",
+            "members": [
+                {
+                    "type": "SYMBOL",
+                    "name": "Expression_Number_0"
+                }
+            ]
+        },
+        "Expression_Number_0": {
             "type": "PATTERN",
             "value": "\\d+"
         }
     }
     }
-    "#.to_string())
+    "#
+    .to_string())
 }
 
 #[cfg(test)]
