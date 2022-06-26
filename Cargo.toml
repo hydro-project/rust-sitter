@@ -1,0 +1,7 @@
+[workspace]
+members = [
+  "macro",
+  "runtime",
+  "tool",
+  "example",
+]

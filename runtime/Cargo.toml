@@ -1,0 +1,19 @@
+[package]
+name = "rust_sitter_runtime"
+description = "Runtime types for rust-sitter"
+version = "0.1.0"
+authors = ["Shadaj Laddad <shadaj@users.noreply.github.com>"]
+edition = "2021"
+license = "MIT/Apache-2.0"
+keywords = ["parsing", "codegen"]
+categories = ["development-tools"]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+tree-sitter = "0.20.6"
+
+[dev-dependencies]
+insta = "1.7.1"
+tempfile = "3.2.0"
