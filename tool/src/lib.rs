@@ -6,6 +6,7 @@ use syn::{
     *,
 };
 
+// TODO(shadaj): share with macro
 #[derive(Debug, Clone, PartialEq)]
 struct NameValueExpr {
     pub path: Ident,

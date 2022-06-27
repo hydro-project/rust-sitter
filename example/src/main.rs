@@ -23,6 +23,5 @@ pub mod grammar {
 }
 
 fn main() {
-    let foo = grammar::parse("123");
-    dbg!(foo);
+    dbg!(grammar::parse("123"));
 }

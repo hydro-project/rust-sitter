@@ -2,4 +2,4 @@
 source: tool/src/lib.rs
 expression: generate_grammar(&m)
 ---
-{"name":"grammar","rules":{"Expression":{"members":[{"name":"Expression_Number","type":"SYMBOL"}],"type":"CHOICE"},"Expression_Number":{"members":[{"name":"Expression_Number_0","type":"SYMBOL"}],"type":"SEQ"},"Expression_Number_0":{"type":"PATTERN","value":"\\d+"},"source_file":{"content":{"name":"Expression","type":"SYMBOL"},"named":false,"type":"ALIAS","value":"Expression"}}}
+{"name":"grammar","rules":{"source_file":{"type":"ALIAS","named":false,"value":"Expression","content":{"type":"SYMBOL","name":"Expression"}},"Expression_Number_0":{"type":"PATTERN","value":"\\d+"},"Expression_Number":{"type":"SEQ","members":[{"type":"SYMBOL","name":"Expression_Number_0"}]},"Expression":{"type":"CHOICE","members":[{"type":"SYMBOL","name":"Expression_Number"}]}}}
