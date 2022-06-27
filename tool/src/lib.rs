@@ -24,21 +24,30 @@ impl Parse for NameValueExpr {
     }
 }
 
-fn gen_leaf(path: String, leaf: Field, out: &mut Map<String, Value>) {
+fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) {
+    let leaf_type = leaf.ty;
+
     let leaf_attr = leaf
         .attrs
         .iter()
-        .find(|attr| attr.path == syn::parse_quote!(rust_sitter::leaf))
-        .unwrap();
+        .find(|attr| attr.path == syn::parse_quote!(rust_sitter::leaf));
 
-    let leaf_params = leaf_attr
-        .parse_args_with(Punctuated::<NameValueExpr, Token![,]>::parse_terminated)
-        .unwrap();
+    let leaf_params = leaf_attr.and_then(|a| {
+        a.parse_args_with(Punctuated::<NameValueExpr, Token![,]>::parse_terminated)
+            .ok()
+    });
 
-    let pattern_param = leaf_params
-        .iter()
-        .find(|param| param.path == "pattern")
-        .map(|p| &p.expr);
+    let pattern_param = leaf_params.as_ref().and_then(|p| {
+        p.iter()
+            .find(|param| param.path == "pattern")
+            .map(|p| p.expr.clone())
+    });
+
+    let text_param = leaf_params.as_ref().and_then(|p| {
+        p.iter()
+            .find(|param| param.path == "text")
+            .map(|p| p.expr.clone())
+    });
 
     if let Some(Expr::Lit(lit)) = pattern_param {
         if let Lit::Str(s) = &lit.lit {
@@ -50,10 +59,47 @@ fn gen_leaf(path: String, leaf: Field, out: &mut Map<String, Value>) {
                 }),
             );
         } else {
-            panic!("Expected pattern to be a string literal");
+            panic!("Expected string literal for pattern");
+        }
+    } else if let Some(Expr::Lit(lit)) = text_param {
+        if let Lit::Str(s) = &lit.lit {
+            out.insert(
+                path,
+                json!({
+                    "type": "STRING",
+                    "value": s.value(),
+                }),
+            );
+        } else {
+            panic!("Expected string literal for text");
+        }
+    } else if let Type::Path(p) = &leaf_type {
+        let type_segment = p.path.segments.first().unwrap();
+        if type_segment.ident == "Box" {
+            let leaf_type = if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
+                p.args.first().unwrap().clone()
+            } else {
+                panic!("Expected angle bracketed path");
+            };
+
+            let leaf_type = if let GenericArgument::Type(Type::Path(t)) = leaf_type {
+                t
+            } else {
+                panic!("Expected type");
+            };
+
+            out.insert(
+                path,
+                json!({
+                    "type": "SYMBOL",
+                    "name": leaf_type.path.segments.first().unwrap().ident.to_string(),
+                }),
+            );
+        } else {
+            panic!("Unexpected leaf type");
         }
     } else {
-        todo!()
+        panic!("Unexpected leaf type");
     }
 }
 
@@ -64,7 +110,7 @@ fn gen_enum_variant(path: String, variant: Variant, out: &mut Map<String, Value>
             .as_ref()
             .map(|v| v.to_string())
             .unwrap_or(format!("{}", i));
-        gen_leaf(
+        gen_field(
             format!("{}_{}", path.clone(), ident_str),
             field.clone(),
             out,
@@ -210,6 +256,32 @@ mod tests {
                     Number(
                         #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
                         i32
+                    ),
+                }
+            }
+        } {
+            m
+        } else {
+            panic!()
+        };
+
+        insta::assert_display_snapshot!(generate_grammar(&m));
+    }
+
+    #[test]
+    fn enum_recursive() {
+        let m = if let syn::Item::Mod(m) = parse_quote! {
+            mod ffi {
+                #[rust_sitter::language]
+                pub enum Expression {
+                    Number(
+                        #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
+                        i32
+                    ),
+                    Neg(
+                        #[rust_sitter::leaf(text = "-", transform = |v| ())]
+                        (),
+                        Box<Expression>
                     ),
                 }
             }

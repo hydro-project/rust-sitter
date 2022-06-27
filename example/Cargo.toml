@@ -6,11 +6,11 @@ edition = "2021"
 
 [dependencies]
 rust_sitter = { path = "../runtime" }
-tree-sitter = "0.20.7"
+tree-sitter = "0.20.6"
 
 [build-dependencies]
 cc = "*"
 tempdir = "0.3.7"
 tree-sitter-cli = "0.20.6"
-tree-sitter = "0.20.7"
+tree-sitter = "0.20.6"
 rust_sitter_tool = { path = "../tool" }

@@ -7,12 +7,10 @@ pub mod grammar {
             #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
             i32,
         ),
-        // Add(
-        //   Box<Expression>,
-        //   #[rust_sitter::leaf(text = "+", transform = |v| ())]
-        //   (),
-        //   Box<Expression>
-        // ),
+        Neg(
+            #[rust_sitter::leaf(text = "-", transform = |_v| ())] (),
+            Box<Expression>,
+        ),
         // Sub(
         //   Box<Expression>,
         //   #[rust_sitter::leaf(text = "-", transform = |v| ())]
@@ -24,4 +22,6 @@ pub mod grammar {
 
 fn main() {
     dbg!(grammar::parse("123"));
+    dbg!(grammar::parse("-123"));
+    dbg!(grammar::parse("--123"));
 }

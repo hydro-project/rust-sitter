@@ -28,7 +28,7 @@ impl Parse for NameValueExpr {
     }
 }
 
-fn gen_leaf(path: String, leaf: Field, out: &mut Vec<Item>) {
+fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
     let extract_ident = Ident::new(&format!("extract_{}", path), leaf.span());
     let leaf_type = leaf.ty;
 
@@ -39,22 +39,46 @@ fn gen_leaf(path: String, leaf: Field, out: &mut Vec<Item>) {
     let leaf_attr = leaf
         .attrs
         .iter()
-        .find(|attr| attr.path == syn::parse_quote!(rust_sitter::leaf))
-        .unwrap();
+        .find(|attr| attr.path == syn::parse_quote!(rust_sitter::leaf));
 
-    let leaf_params = leaf_attr
-        .parse_args_with(Punctuated::<NameValueExpr, Token![,]>::parse_terminated)
-        .unwrap();
+    let leaf_params = leaf_attr.and_then(|a| {
+        a.parse_args_with(Punctuated::<NameValueExpr, Token![,]>::parse_terminated)
+            .ok()
+    });
 
-    let transform_param = leaf_params.iter().find(|param| param.path == "transform");
-    let leaf_expr = match transform_param {
-        Some(t) => {
-            let closure = &t.expr;
+    let transform_param = leaf_params.as_ref().and_then(|p| {
+        p.iter()
+            .find(|param| param.path == "transform")
+            .map(|p| p.expr.clone())
+    });
+
+    let leaf_expr: Expr = match transform_param {
+        Some(closure) => {
             syn::parse_quote! {
                 (#closure)(#leaf_text_expr)
             }
         }
-        None => leaf_text_expr,
+        None => {
+            if let Type::Path(p) = &leaf_type {
+                let type_segment = p.path.segments.first().unwrap();
+                if type_segment.ident == "Box" {
+                    let leaf_type =
+                        if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
+                            p.args.first().unwrap().clone()
+                        } else {
+                            panic!("Expected angle bracketed path");
+                        };
+
+                    syn::parse_quote! {
+                        Box::new(#leaf_type::extract(node.child(0).unwrap(), source))
+                    }
+                } else {
+                    panic!("Unexpected leaf type");
+                }
+            } else {
+                panic!("Unexpected leaf type");
+            }
+        }
     };
 
     out.push(syn::parse_quote! {
@@ -72,7 +96,7 @@ fn gen_enum_variant(path: String, variant: Variant, containing_type: Ident, out:
             .as_ref()
             .map(|v| v.to_string())
             .unwrap_or(format!("{}", i));
-        gen_leaf(
+        gen_field(
             format!("{}_{}", path.clone(), ident_str),
             field.clone(),
             out,
@@ -291,6 +315,30 @@ mod tests {
                         Number(
                             #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
                             i32
+                        ),
+                    }
+                }
+            })
+            .to_token_stream()
+            .to_string()
+        ));
+    }
+
+    #[test]
+    fn enum_recursive() {
+        insta::assert_display_snapshot!(rustfmt_code(
+            &expand_grammar(parse_quote! {
+                mod ffi {
+                    #[rust_sitter::language]
+                    pub enum Expression {
+                        Number(
+                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
+                            i32
+                        ),
+                        Neg(
+                            #[rust_sitter::leaf(text = "-", transform = |v| ())]
+                            (),
+                            Box<Expression>
                         ),
                     }
                 }

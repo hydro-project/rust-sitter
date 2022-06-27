@@ -1,0 +1,61 @@
+---
+source: macro/src/lib.rs
+expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            mod ffi\n                            {\n                                #[rust_sitter :: language] pub enum Expression\n                                {\n                                    Number(#[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v : & str | v.parse ::\n                                    < i32 > ().unwrap())] i32),\n                                    Neg(#[rust_sitter :: leaf(text = \"-\", transform = | v | ())]\n                                    (), Box < Expression >),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
+---
+mod ffi {
+    pub enum Expression {
+        Number(i32),
+        Neg((), Box<Expression>),
+    }
+    impl rust_sitter::Extract for Expression {
+        #[allow(non_snake_case)]
+        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+            #[allow(non_snake_case)]
+            fn extract_Expression_Number_0(node: tree_sitter::Node, source: &[u8]) -> i32 {
+                (|v: &str| v.parse::<i32>().unwrap())(node.utf8_text(source).unwrap())
+            }
+            #[allow(non_snake_case)]
+            fn extract_Expression_Number(node: tree_sitter::Node, source: &[u8]) -> Expression {
+                Expression::Number(extract_Expression_Number_0(
+                    node.child(0usize).unwrap(),
+                    source,
+                ))
+            }
+            #[allow(non_snake_case)]
+            fn extract_Expression_Neg_0(node: tree_sitter::Node, source: &[u8]) -> () {
+                (|v| ())(node.utf8_text(source).unwrap())
+            }
+            #[allow(non_snake_case)]
+            fn extract_Expression_Neg_1(node: tree_sitter::Node, source: &[u8]) -> Box<Expression> {
+                Box::new(Expression::extract(node.child(0).unwrap(), source))
+            }
+            #[allow(non_snake_case)]
+            fn extract_Expression_Neg(node: tree_sitter::Node, source: &[u8]) -> Expression {
+                Expression::Neg(
+                    extract_Expression_Neg_0(node.child(0usize).unwrap(), source),
+                    extract_Expression_Neg_1(node.child(1usize).unwrap(), source),
+                )
+            }
+            match node.child(0).unwrap().kind() {
+                "Expression_Number" => extract_Expression_Number(node.child(0).unwrap(), source),
+                "Expression_Neg" => extract_Expression_Neg(node.child(0).unwrap(), source),
+                _ => panic!(),
+            }
+        }
+    }
+    extern "C" {
+        fn tree_sitter_grammar() -> tree_sitter::Language;
+    }
+    fn language() -> tree_sitter::Language {
+        unsafe { tree_sitter_grammar() }
+    }
+    pub fn parse(input: &str) -> Expression {
+        let mut parser = tree_sitter::Parser::new();
+        parser.set_language(language()).unwrap();
+        let tree = parser.parse(input, None).unwrap();
+        let root_node = tree.root_node();
+        use rust_sitter::Extract;
+        Expression::extract(root_node.child(0).unwrap(), input.as_bytes())
+    }
+}
+
