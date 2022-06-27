@@ -1,0 +1,13 @@
+---
+source: example/src/main.rs
+expression: "arithmetic_grammar::parse(\"1-2\")"
+---
+Sub(
+    Number(
+        1,
+    ),
+    (),
+    Number(
+        2,
+    ),
+)

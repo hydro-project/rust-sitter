@@ -1,0 +1,7 @@
+---
+source: example/src/main.rs
+expression: "arithmetic_grammar::parse(\"1\")"
+---
+Number(
+    1,
+)

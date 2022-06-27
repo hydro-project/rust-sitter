@@ -14,3 +14,6 @@ tempdir = "0.3.7"
 tree-sitter-cli = "0.20.6"
 tree-sitter = "0.20.6"
 rust_sitter_tool = { path = "../tool" }
+
+[dev-dependencies]
+insta = "1.7.1"

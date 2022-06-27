@@ -1,5 +1,7 @@
+use std::io::Write;
+
 #[rust_sitter::grammar]
-pub mod grammar {
+pub mod arithmetic_grammar {
     #[rust_sitter::language]
     #[derive(Debug)]
     pub enum Expression {
@@ -22,8 +24,34 @@ pub mod grammar {
 }
 
 fn main() {
-    dbg!(grammar::parse("123"));
-    dbg!(grammar::parse("1-2"));
-    dbg!(grammar::parse("1-2-3"));
-    dbg!(grammar::parse("1-2*3"));
+    let stdin = std::io::stdin();
+
+    loop {
+        print!("> ");
+        std::io::stdout().flush().unwrap();
+
+        let mut input = String::new();
+        stdin.read_line(&mut input).unwrap();
+        let input = input.trim();
+        if input.is_empty() {
+            break;
+        }
+
+        println!("{:?}", arithmetic_grammar::parse(input));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::arithmetic_grammar;
+
+    #[test]
+    fn arithmetic_grammar() {
+        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1"));
+        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1-2"));
+        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1-2-3"));
+        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1-2*3"));
+        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1*2*3"));
+        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1*2-3"));
+    }
 }

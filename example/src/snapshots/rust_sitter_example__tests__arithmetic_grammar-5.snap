@@ -1,0 +1,19 @@
+---
+source: example/src/main.rs
+expression: "arithmetic_grammar::parse(\"1*2*3\")"
+---
+Mul(
+    Mul(
+        Number(
+            1,
+        ),
+        (),
+        Number(
+            2,
+        ),
+    ),
+    (),
+    Number(
+        3,
+    ),
+)
