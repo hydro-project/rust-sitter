@@ -70,7 +70,7 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
                         };
 
                     syn::parse_quote! {
-                        Box::new(#leaf_type::extract(node.child(0).unwrap(), source))
+                        Box::new(#leaf_type::extract(node, source))
                     }
                 } else {
                     panic!("Unexpected leaf type");
@@ -260,6 +260,14 @@ pub fn leaf(
     item
 }
 
+#[proc_macro_attribute]
+pub fn prec_left(
+    _attr: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    item
+}
+
 /// Mark a module to be analyzed for a Tree Sitter grammar.
 #[proc_macro_attribute]
 pub fn grammar(
@@ -336,6 +344,32 @@ mod tests {
                             i32
                         ),
                         Neg(
+                            #[rust_sitter::leaf(text = "-", transform = |v| ())]
+                            (),
+                            Box<Expression>
+                        ),
+                    }
+                }
+            })
+            .to_token_stream()
+            .to_string()
+        ));
+    }
+
+    #[test]
+    fn enum_prec_left() {
+        insta::assert_display_snapshot!(rustfmt_code(
+            &expand_grammar(parse_quote! {
+                mod ffi {
+                    #[rust_sitter::language]
+                    pub enum Expression {
+                        Number(
+                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
+                            i32
+                        ),
+                        #[rust_sitter::prec_left(1)]
+                        Sub(
+                            Box<Expression>,
                             #[rust_sitter::leaf(text = "-", transform = |v| ())]
                             (),
                             Box<Expression>

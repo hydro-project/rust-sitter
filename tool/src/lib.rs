@@ -24,7 +24,7 @@ impl Parse for NameValueExpr {
     }
 }
 
-fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) {
+fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
     let leaf_type = leaf.ty;
 
     let leaf_attr = leaf
@@ -52,24 +52,34 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) {
     if let Some(Expr::Lit(lit)) = pattern_param {
         if let Lit::Str(s) = &lit.lit {
             out.insert(
-                path,
+                path.clone(),
                 json!({
                     "type": "PATTERN",
                     "value": s.value(),
                 }),
             );
+
+            json!({
+                "type": "SYMBOL",
+                "name": path
+            })
         } else {
             panic!("Expected string literal for pattern");
         }
     } else if let Some(Expr::Lit(lit)) = text_param {
         if let Lit::Str(s) = &lit.lit {
             out.insert(
-                path,
+                path.clone(),
                 json!({
                     "type": "STRING",
                     "value": s.value(),
                 }),
             );
+
+            json!({
+                "type": "SYMBOL",
+                "name": path
+            })
         } else {
             panic!("Expected string literal for text");
         }
@@ -88,13 +98,10 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) {
                 panic!("Expected type");
             };
 
-            out.insert(
-                path,
-                json!({
-                    "type": "SYMBOL",
-                    "name": leaf_type.path.segments.first().unwrap().ident.to_string(),
-                }),
-            );
+            json!({
+                "type": "SYMBOL",
+                "name": leaf_type.path.segments.first().unwrap().ident.to_string(),
+            })
         } else {
             panic!("Unexpected leaf type");
         }
@@ -104,19 +111,6 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) {
 }
 
 fn gen_enum_variant(path: String, variant: Variant, out: &mut Map<String, Value>) {
-    variant.fields.iter().enumerate().for_each(|(i, field)| {
-        let ident_str = field
-            .ident
-            .as_ref()
-            .map(|v| v.to_string())
-            .unwrap_or(format!("{}", i));
-        gen_field(
-            format!("{}_{}", path.clone(), ident_str),
-            field.clone(),
-            out,
-        );
-    });
-
     let children = variant
         .fields
         .iter()
@@ -127,21 +121,41 @@ fn gen_enum_variant(path: String, variant: Variant, out: &mut Map<String, Value>
                 .as_ref()
                 .map(|v| v.to_string())
                 .unwrap_or(format!("{}", i));
-            let ident = format!("{}_{}", path.clone(), ident_str);
-            json!({
-                "type": "SYMBOL",
-                "name": ident
-            })
+            gen_field(
+                format!("{}_{}", path.clone(), ident_str),
+                field.clone(),
+                out,
+            )
         })
         .collect::<Vec<Value>>();
 
-    out.insert(
-        path,
-        json!({
-            "type": "SEQ",
-            "members": children,
-        }),
-    );
+    let prec_left_attr = variant
+        .attrs
+        .iter()
+        .find(|attr| attr.path == syn::parse_quote!(rust_sitter::prec_left));
+
+    let prec_left_param = prec_left_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
+
+    let seq_rule = json!({
+        "type": "SEQ",
+        "members": children
+    });
+
+    let rule = if let Some(Expr::Lit(lit)) = prec_left_param {
+        if let Lit::Int(i) = &lit.lit {
+            json!({
+                "type": "PREC_LEFT",
+                "value": i.base10_parse::<u32>().unwrap(),
+                "content": seq_rule
+            })
+        } else {
+            panic!("Expected integer literal for precedence");
+        }
+    } else {
+        seq_rule
+    };
+
+    out.insert(path, rule);
 }
 
 fn generate_grammar(module: &ItemMod) -> Value {
@@ -199,13 +213,12 @@ fn generate_grammar(module: &ItemMod) -> Value {
                 }))
             });
 
-            rules_map.insert(
-                e.ident.to_string(),
-                json!({
-                    "type": "CHOICE",
-                    "members": members
-                }),
-            );
+            let rule = json!({
+                "type": "CHOICE",
+                "members": members
+            });
+
+            rules_map.insert(e.ident.to_string(), rule);
         }
 
         _ => panic!(),
@@ -279,6 +292,34 @@ mod tests {
                         i32
                     ),
                     Neg(
+                        #[rust_sitter::leaf(text = "-", transform = |v| ())]
+                        (),
+                        Box<Expression>
+                    ),
+                }
+            }
+        } {
+            m
+        } else {
+            panic!()
+        };
+
+        insta::assert_display_snapshot!(generate_grammar(&m));
+    }
+
+    #[test]
+    fn enum_prec_left() {
+        let m = if let syn::Item::Mod(m) = parse_quote! {
+            mod ffi {
+                #[rust_sitter::language]
+                pub enum Expression {
+                    Number(
+                        #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
+                        i32
+                    ),
+                    #[rust_sitter::prec_left(1)]
+                    Sub(
+                        Box<Expression>,
                         #[rust_sitter::leaf(text = "-", transform = |v| ())]
                         (),
                         Box<Expression>

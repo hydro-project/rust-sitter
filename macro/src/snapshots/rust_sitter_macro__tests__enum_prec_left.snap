@@ -1,11 +1,11 @@
 ---
 source: macro/src/lib.rs
-expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            mod ffi\n                            {\n                                #[rust_sitter :: language] pub enum Expression\n                                {\n                                    Number(#[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v : & str | v.parse ::\n                                    < i32 > ().unwrap())] i32),\n                                    Neg(#[rust_sitter :: leaf(text = \"-\", transform = | v | ())]\n                                    (), Box < Expression >),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
+expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            mod ffi\n                            {\n                                #[rust_sitter :: language] pub enum Expression\n                                {\n                                    Number(#[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v : & str | v.parse ::\n                                    < i32 > ().unwrap())] i32), #[rust_sitter :: prec_left(1)]\n                                    Sub(Box < Expression >,\n                                    #[rust_sitter :: leaf(text = \"-\", transform = | v | ())] (),\n                                    Box < Expression >),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
 ---
 mod ffi {
     pub enum Expression {
         Number(i32),
-        Neg((), Box<Expression>),
+        Sub(Box<Expression>, (), Box<Expression>),
     }
     impl rust_sitter::Extract for Expression {
         #[allow(non_snake_case)]
@@ -22,23 +22,28 @@ mod ffi {
                 ))
             }
             #[allow(non_snake_case)]
-            fn extract_Expression_Neg_0(node: tree_sitter::Node, source: &[u8]) -> () {
-                (|v| ())(node.utf8_text(source).unwrap())
-            }
-            #[allow(non_snake_case)]
-            fn extract_Expression_Neg_1(node: tree_sitter::Node, source: &[u8]) -> Box<Expression> {
+            fn extract_Expression_Sub_0(node: tree_sitter::Node, source: &[u8]) -> Box<Expression> {
                 Box::new(Expression::extract(node, source))
             }
             #[allow(non_snake_case)]
-            fn extract_Expression_Neg(node: tree_sitter::Node, source: &[u8]) -> Expression {
-                Expression::Neg(
-                    extract_Expression_Neg_0(node.child(0usize).unwrap(), source),
-                    extract_Expression_Neg_1(node.child(1usize).unwrap(), source),
+            fn extract_Expression_Sub_1(node: tree_sitter::Node, source: &[u8]) -> () {
+                (|v| ())(node.utf8_text(source).unwrap())
+            }
+            #[allow(non_snake_case)]
+            fn extract_Expression_Sub_2(node: tree_sitter::Node, source: &[u8]) -> Box<Expression> {
+                Box::new(Expression::extract(node, source))
+            }
+            #[allow(non_snake_case)]
+            fn extract_Expression_Sub(node: tree_sitter::Node, source: &[u8]) -> Expression {
+                Expression::Sub(
+                    extract_Expression_Sub_0(node.child(0usize).unwrap(), source),
+                    extract_Expression_Sub_1(node.child(1usize).unwrap(), source),
+                    extract_Expression_Sub_2(node.child(2usize).unwrap(), source),
                 )
             }
             match node.child(0).unwrap().kind() {
                 "Expression_Number" => extract_Expression_Number(node.child(0).unwrap(), source),
-                "Expression_Neg" => extract_Expression_Neg(node.child(0).unwrap(), source),
+                "Expression_Sub" => extract_Expression_Sub(node.child(0).unwrap(), source),
                 _ => panic!(),
             }
         }
