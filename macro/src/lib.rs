@@ -65,7 +65,7 @@ fn gen_leaf(path: String, leaf: Field, out: &mut Vec<Item>) {
     });
 }
 
-fn gen_enum_variant(path: String, variant: Variant, out: &mut Vec<Item>) {
+fn gen_enum_variant(path: String, variant: Variant, containing_type: Ident, out: &mut Vec<Item>) {
     variant.fields.iter().enumerate().for_each(|(i, field)| {
         let ident_str = field
             .ident
@@ -97,15 +97,15 @@ fn gen_enum_variant(path: String, variant: Variant, out: &mut Vec<Item>) {
                 field.span(),
             );
             syn::parse_quote! {
-                Self::#ident(node.child(#i).unwrap(), source)
+                #ident(node.child(#i).unwrap(), source)
             }
         })
         .collect::<Vec<Expr>>();
 
     out.push(syn::parse_quote! {
         #[allow(non_snake_case)]
-        fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> Self {
-            Self::#variant_ident(
+        fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> #containing_type {
+            #containing_type::#variant_ident(
                 #(#children_parsed),*
             )
         }
@@ -124,27 +124,18 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                     gen_enum_variant(
                         format!("{}_{}", e.ident, v.ident),
                         v.clone(),
+                        e.ident.clone(),
                         &mut impl_body,
                     )
                 });
 
-                let extract_ident = Ident::new(&format!("extract_{}", e.ident), e.span());
                 let mut match_cases: Vec<Arm> = vec![];
                 e.variants.iter().for_each(|v| {
                     let variant_path = format!("{}_{}", e.ident, v.ident);
                     let extract_ident = Ident::new(&format!("extract_{}", variant_path), v.span());
                     match_cases.push(syn::parse_quote! {
-                        #variant_path => Self::#extract_ident(node.child(0).unwrap(), source)
+                        #variant_path => #extract_ident(node.child(0).unwrap(), source)
                     });
-                });
-
-                impl_body.push(syn::parse_quote! {
-                    fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> Self {
-                        match node.child(0).unwrap().kind() {
-                            #(#match_cases),*,
-                            _ => panic!()
-                        }
-                    }
                 });
 
                 e.attrs.retain(|a| !is_sitter_attr(a));
@@ -162,8 +153,16 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                         #e
                     },
                     syn::parse_quote! {
-                        impl #enum_name {
-                            #(#impl_body)*
+                        impl rust_sitter::Extract for #enum_name {
+                            #[allow(non_snake_case)]
+                            fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+                                #(#impl_body)*
+
+                                match node.child(0).unwrap().kind() {
+                                    #(#match_cases),*,
+                                    _ => panic!()
+                                }
+                            }
                         }
                     },
                 ]
@@ -192,7 +191,8 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
             let tree = parser.parse(input, None).unwrap();
             let root_node = tree.root_node();
 
-            Expression::extract_Expression(root_node.child(0).unwrap(), input.as_bytes())
+            use rust_sitter::Extract;
+            Expression::extract(root_node.child(0).unwrap(), input.as_bytes())
         }
     });
 

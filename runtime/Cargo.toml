@@ -1,6 +1,6 @@
 [package]
-name = "rust_sitter_runtime"
-description = "Runtime types for rust-sitter"
+name = "rust_sitter"
+description = "A package for defining tree-sitter grammars alongside Rust logic"
 version = "0.1.0"
 authors = ["Shadaj Laddad <shadaj@users.noreply.github.com>"]
 edition = "2021"
@@ -12,7 +12,8 @@ categories = ["development-tools"]
 path = "src/lib.rs"
 
 [dependencies]
-tree-sitter = "0.20.6"
+tree-sitter = "*"
+rust_sitter_macro = { path = "../macro" }
 
 [dev-dependencies]
 insta = "1.7.1"

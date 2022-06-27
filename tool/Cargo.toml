@@ -11,11 +11,7 @@ categories = ["development-tools"]
 [dependencies]
 syn = { version = "1.0", features = [ "full", "extra-traits" ] }
 syn-inline-mod = "0.5.0"
-quote = "1.0"
-impls = "1"
-lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }
-tree-sitter-cli = "0.20.6"
 
 [dev-dependencies]
 insta = "1.7.1"

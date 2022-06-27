@@ -6,7 +6,7 @@ mod ffi {
     pub enum Expression {
         Number(i32),
     }
-    impl Expression {
+    impl rust_sitter::Extract for Expression {
         #[allow(non_snake_case)]
         fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
             #[allow(non_snake_case)]
@@ -37,6 +37,7 @@ mod ffi {
         parser.set_language(language()).unwrap();
         let tree = parser.parse(input, None).unwrap();
         let root_node = tree.root_node();
+        use rust_sitter::Extract;
         Expression::extract(root_node.child(0).unwrap(), input.as_bytes())
     }
 }
