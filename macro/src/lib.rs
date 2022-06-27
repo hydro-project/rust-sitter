@@ -165,25 +165,21 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                 });
 
                 let enum_name = &e.ident;
+                let extract_impl: Item = syn::parse_quote! {
+                    impl rust_sitter::Extract for #enum_name {
+                        #[allow(non_snake_case)]
+                        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+                            #(#impl_body)*
 
-                vec![
-                    syn::parse_quote! {
-                        #e
-                    },
-                    syn::parse_quote! {
-                        impl rust_sitter::Extract for #enum_name {
-                            #[allow(non_snake_case)]
-                            fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
-                                #(#impl_body)*
-
-                                match node.child(0).unwrap().kind() {
-                                    #(#match_cases),*,
-                                    _ => panic!()
-                                }
+                            match node.child(0).unwrap().kind() {
+                                #(#match_cases),*,
+                                _ => panic!()
                             }
                         }
-                    },
-                ]
+                    }
+                };
+
+                vec![Item::Enum(e), extract_impl]
             }
 
             _ => panic!(),
