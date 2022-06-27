@@ -114,6 +114,24 @@ fn gen_enum_variant(path: String, variant: Variant, containing_type: Ident, out:
 
 fn expand_grammar(input: ItemMod) -> ItemMod {
     let (brace, new_contents) = input.content.unwrap();
+
+    let root_type = new_contents
+        .iter()
+        .find_map(|item| match item {
+            Item::Enum(e) => {
+                if e.attrs
+                    .iter()
+                    .any(|attr| attr.path == syn::parse_quote!(rust_sitter::language))
+                {
+                    Some(e.ident.clone())
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+        .expect("Each parser must have the root type annotated with `#[rust_sitter::language]`");
+
     let mut transformed: Vec<Item> = new_contents
         .iter()
         .cloned()
@@ -185,14 +203,14 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
     });
 
     transformed.push(syn::parse_quote! {
-        pub fn parse(input: &str) -> Expression {
+        pub fn parse(input: &str) -> #root_type {
             let mut parser = tree_sitter::Parser::new();
             parser.set_language(language()).unwrap();
             let tree = parser.parse(input, None).unwrap();
             let root_node = tree.root_node();
 
             use rust_sitter::Extract;
-            Expression::extract(root_node.child(0).unwrap(), input.as_bytes())
+            #root_type::extract(root_node.child(0).unwrap(), input.as_bytes())
         }
     });
 
