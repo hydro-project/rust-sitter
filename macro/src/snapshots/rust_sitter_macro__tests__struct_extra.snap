@@ -54,13 +54,24 @@ mod ffi {
     fn language() -> tree_sitter::Language {
         unsafe { tree_sitter_grammar() }
     }
-    pub fn parse(input: &str) -> Expression {
+    pub fn parse(
+        input: &str,
+    ) -> core::result::Result<Expression, Vec<rust_sitter::errors::ParseError>> {
         let mut parser = tree_sitter::Parser::new();
         parser.set_language(language()).unwrap();
         let tree = parser.parse(input, None).unwrap();
         let root_node = tree.root_node();
-        use rust_sitter::Extract;
-        Expression::extract(root_node.child(0).unwrap(), input.as_bytes())
+        if root_node.has_error() {
+            let mut errors = vec![];
+            rust_sitter::errors::collect_parsing_errors(&root_node, input.as_bytes(), &mut errors);
+            Err(errors)
+        } else {
+            use rust_sitter::Extract;
+            Ok(Expression::extract(
+                root_node.child(0).unwrap(),
+                input.as_bytes(),
+            ))
+        }
     }
 }
 

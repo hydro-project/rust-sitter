@@ -306,14 +306,25 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
     });
 
     transformed.push(syn::parse_quote! {
-        pub fn parse(input: &str) -> #root_type {
+        pub fn parse(input: &str) -> core::result::Result<#root_type, Vec<rust_sitter::errors::ParseError>> {
             let mut parser = tree_sitter::Parser::new();
             parser.set_language(language()).unwrap();
             let tree = parser.parse(input, None).unwrap();
             let root_node = tree.root_node();
 
-            use rust_sitter::Extract;
-            #root_type::extract(root_node.child(0).unwrap(), input.as_bytes())
+            if root_node.has_error() {
+                let mut errors = vec![];
+                rust_sitter::errors::collect_parsing_errors(
+                    &root_node,
+                    input.as_bytes(),
+                    &mut errors,
+                );
+
+                Err(errors)
+            } else {
+                use rust_sitter::Extract;
+                Ok(#root_type::extract(root_node.child(0).unwrap(), input.as_bytes()))
+            }
         }
     });
 

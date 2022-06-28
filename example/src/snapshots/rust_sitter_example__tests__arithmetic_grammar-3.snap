@@ -1,19 +1,21 @@
 ---
 source: example/src/main.rs
-expression: "arithmetic_grammar::parse(\"1-2-3\")"
+expression: "arithmetic_grammar::parse(\"1 - 2 - 3\")"
 ---
-Sub(
+Ok(
     Sub(
-        Number(
-            1,
+        Sub(
+            Number(
+                1,
+            ),
+            (),
+            Number(
+                2,
+            ),
         ),
         (),
         Number(
-            2,
+            3,
         ),
-    ),
-    (),
-    Number(
-        3,
     ),
 )
