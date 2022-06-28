@@ -21,6 +21,12 @@ pub mod arithmetic_grammar {
             Box<Expression>,
         ),
     }
+
+    #[rust_sitter::extra]
+    struct Whitespace {
+        #[rust_sitter::leaf(pattern = r"\s", transform = |_v| ())]
+        _whitespace: (),
+    }
 }
 
 fn main() {
@@ -48,10 +54,10 @@ mod tests {
     #[test]
     fn arithmetic_grammar() {
         insta::assert_debug_snapshot!(arithmetic_grammar::parse("1"));
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1-2"));
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1-2-3"));
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1-2*3"));
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1*2*3"));
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1*2-3"));
+        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1 - 2"));
+        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1 - 2 - 3"));
+        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1 - 2 * 3"));
+        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1 * 2 * 3"));
+        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1 * 2 - 3"));
     }
 }

@@ -1,3 +1,4 @@
+use proc_macro2::Span;
 use quote::ToTokens;
 use spanned::Spanned;
 use syn::{
@@ -89,8 +90,14 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
     });
 }
 
-fn gen_enum_variant(path: String, variant: Variant, containing_type: Ident, out: &mut Vec<Item>) {
-    variant.fields.iter().enumerate().for_each(|(i, field)| {
+fn gen_struct_or_variant(
+    path: String,
+    fields: Fields,
+    variant_ident: Option<Ident>,
+    containing_type: Ident,
+    out: &mut Vec<Item>,
+) {
+    fields.iter().enumerate().for_each(|(i, field)| {
         let ident_str = field
             .ident
             .as_ref()
@@ -103,37 +110,79 @@ fn gen_enum_variant(path: String, variant: Variant, containing_type: Ident, out:
         );
     });
 
-    let variant_ident = &variant.ident;
-    let extract_ident = Ident::new(&format!("extract_{}", path), variant.span());
+    let extract_ident = Ident::new(
+        &format!("extract_{}", path),
+        variant_ident
+            .as_ref()
+            .map(|v| v.span())
+            .unwrap_or_else(|| containing_type.span()),
+    );
 
-    let children_parsed = variant
-        .fields
-        .iter()
-        .enumerate()
-        .map(|(i, field)| {
-            let ident_str = field
-                .ident
-                .as_ref()
-                .map(|v| v.to_string())
-                .unwrap_or(format!("{}", i));
-            let ident = Ident::new(
-                &format!("extract_{}_{}", path.clone(), ident_str),
-                field.span(),
-            );
-            syn::parse_quote! {
-                #ident(node.child(#i).unwrap(), source)
+    if let Some(variant_ident) = variant_ident {
+        let children_parsed = fields
+            .iter()
+            .enumerate()
+            .map(|(i, field)| {
+                let ident_str = field
+                    .ident
+                    .as_ref()
+                    .map(|v| v.to_string())
+                    .unwrap_or(format!("{}", i));
+                let ident = Ident::new(
+                    &format!("extract_{}_{}", path.clone(), ident_str),
+                    field.span(),
+                );
+
+                syn::parse_quote! {
+                    #ident(node.child_by_field_name(#ident_str).unwrap(), source)
+                }
+            })
+            .collect::<Vec<Expr>>();
+
+        out.push(syn::parse_quote! {
+            #[allow(non_snake_case)]
+            fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> #containing_type {
+                #containing_type::#variant_ident(
+                    #(#children_parsed),*
+                )
             }
-        })
-        .collect::<Vec<Expr>>();
+        });
+    } else {
+        let children_parsed = fields
+            .iter()
+            .enumerate()
+            .map(|(i, field)| {
+                let ident_str = field
+                    .ident
+                    .as_ref()
+                    .map(|v| v.to_string())
+                    .unwrap_or(format!("{}", i));
+                let ident = Ident::new(
+                    &format!("extract_{}_{}", path.clone(), ident_str),
+                    field.span(),
+                );
 
-    out.push(syn::parse_quote! {
-        #[allow(non_snake_case)]
-        fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> #containing_type {
-            #containing_type::#variant_ident(
-                #(#children_parsed),*
-            )
-        }
-    });
+                let field_name = field.ident.as_ref().unwrap();
+                FieldValue {
+                    attrs: vec![],
+                    member: Member::Named(field_name.clone()),
+                    colon_token: Some(Token![:](Span::call_site())),
+                    expr: syn::parse_quote! {
+                        #ident(node.child_by_field_name(#ident_str).unwrap(), source)
+                    },
+                }
+            })
+            .collect::<Vec<FieldValue>>();
+
+        out.push(syn::parse_quote! {
+            #[allow(non_snake_case)]
+            fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> #containing_type {
+                #containing_type {
+                    #(#children_parsed),*
+                }
+            }
+        });
+    }
 }
 
 fn expand_grammar(input: ItemMod) -> ItemMod {
@@ -163,9 +212,10 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
             Item::Enum(mut e) => {
                 let mut impl_body = vec![];
                 e.variants.iter().for_each(|v| {
-                    gen_enum_variant(
+                    gen_struct_or_variant(
                         format!("{}_{}", e.ident, v.ident),
-                        v.clone(),
+                        v.fields.clone(),
+                        Some(v.ident.clone()),
                         e.ident.clone(),
                         &mut impl_body,
                     )
@@ -204,6 +254,39 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                 };
 
                 vec![Item::Enum(e), extract_impl]
+            }
+
+            Item::Struct(mut s) => {
+                let mut impl_body = vec![];
+
+                gen_struct_or_variant(
+                    s.ident.to_string(),
+                    s.fields.clone(),
+                    None,
+                    s.ident.clone(),
+                    &mut impl_body,
+                );
+
+                s.attrs.retain(|a| !is_sitter_attr(a));
+                s.fields.iter_mut().for_each(|f| {
+                    f.attrs.retain(|a| !is_sitter_attr(a));
+                });
+
+                let struct_name = &s.ident;
+                let extract_ident = Ident::new(&format!("extract_{}", struct_name), s.span());
+
+                let extract_impl: Item = syn::parse_quote! {
+                    impl rust_sitter::Extract for #struct_name {
+                        #[allow(non_snake_case)]
+                        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+                            #(#impl_body)*
+
+                            #extract_ident(node, source)
+                        }
+                    }
+                };
+
+                vec![Item::Struct(s), extract_impl]
             }
 
             _ => panic!(),
@@ -374,6 +457,30 @@ mod tests {
                             (),
                             Box<Expression>
                         ),
+                    }
+                }
+            })
+            .to_token_stream()
+            .to_string()
+        ));
+    }
+
+    #[test]
+    fn struct_extra() {
+        insta::assert_display_snapshot!(rustfmt_code(
+            &expand_grammar(parse_quote! {
+                mod ffi {
+                    #[rust_sitter::language]
+                    pub enum Expression {
+                        Number(
+                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse().unwrap())] i32,
+                        ),
+                    }
+
+                    #[rust_sitter::extra]
+                    struct Whitespace {
+                        #[rust_sitter::leaf(pattern = r"\s", transform = |_v| ())]
+                        _whitespace: (),
                     }
                 }
             })

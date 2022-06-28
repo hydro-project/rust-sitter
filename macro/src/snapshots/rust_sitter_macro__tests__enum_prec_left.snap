@@ -17,7 +17,7 @@ mod ffi {
             #[allow(non_snake_case)]
             fn extract_Expression_Number(node: tree_sitter::Node, source: &[u8]) -> Expression {
                 Expression::Number(extract_Expression_Number_0(
-                    node.child(0usize).unwrap(),
+                    node.child_by_field_name("0").unwrap(),
                     source,
                 ))
             }
@@ -36,9 +36,9 @@ mod ffi {
             #[allow(non_snake_case)]
             fn extract_Expression_Sub(node: tree_sitter::Node, source: &[u8]) -> Expression {
                 Expression::Sub(
-                    extract_Expression_Sub_0(node.child(0usize).unwrap(), source),
-                    extract_Expression_Sub_1(node.child(1usize).unwrap(), source),
-                    extract_Expression_Sub_2(node.child(2usize).unwrap(), source),
+                    extract_Expression_Sub_0(node.child_by_field_name("0").unwrap(), source),
+                    extract_Expression_Sub_1(node.child_by_field_name("1").unwrap(), source),
+                    extract_Expression_Sub_2(node.child_by_field_name("2").unwrap(), source),
                 )
             }
             match node.child(0).unwrap().kind() {

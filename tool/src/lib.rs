@@ -110,9 +110,13 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
     }
 }
 
-fn gen_enum_variant(path: String, variant: Variant, out: &mut Map<String, Value>) {
-    let children = variant
-        .fields
+fn gen_struct_or_variant(
+    path: String,
+    attrs: Vec<Attribute>,
+    fields: Fields,
+    out: &mut Map<String, Value>,
+) {
+    let children = fields
         .iter()
         .enumerate()
         .map(|(i, field)| {
@@ -121,16 +125,19 @@ fn gen_enum_variant(path: String, variant: Variant, out: &mut Map<String, Value>
                 .as_ref()
                 .map(|v| v.to_string())
                 .unwrap_or(format!("{}", i));
-            gen_field(
-                format!("{}_{}", path.clone(), ident_str),
-                field.clone(),
-                out,
-            )
+            json!({
+                "type": "FIELD",
+                "name": ident_str,
+                "content": gen_field(
+                    format!("{}_{}", path.clone(), ident_str),
+                    field.clone(),
+                    out,
+                )
+            })
         })
         .collect::<Vec<Value>>();
 
-    let prec_left_attr = variant
-        .attrs
+    let prec_left_attr = attrs
         .iter()
         .find(|attr| attr.path == syn::parse_quote!(rust_sitter::prec_left));
 
@@ -160,6 +167,7 @@ fn gen_enum_variant(path: String, variant: Variant, out: &mut Map<String, Value>
 
 fn generate_grammar(module: &ItemMod) -> Value {
     let mut rules_map = Map::new();
+    let mut extras_list = vec![];
 
     let (_, contents) = module.content.as_ref().unwrap();
 
@@ -194,39 +202,66 @@ fn generate_grammar(module: &ItemMod) -> Value {
         }),
     );
 
-    contents.iter().for_each(|c| match c {
-        Item::Enum(e) => {
-            e.variants.iter().for_each(|v| {
-                gen_enum_variant(
-                    format!("{}_{}", e.ident, v.ident),
-                    v.clone(),
+    contents.iter().for_each(|c| {
+        let (symbol, attrs) = match c {
+            Item::Enum(e) => {
+                e.variants.iter().for_each(|v| {
+                    gen_struct_or_variant(
+                        format!("{}_{}", e.ident, v.ident),
+                        v.attrs.clone(),
+                        v.fields.clone(),
+                        &mut rules_map,
+                    )
+                });
+
+                let mut members: Vec<Value> = vec![];
+                e.variants.iter().for_each(|v| {
+                    let variant_path = format!("{}_{}", e.ident.clone(), v.ident);
+                    members.push(json!({
+                        "type": "SYMBOL",
+                        "name": variant_path
+                    }))
+                });
+
+                let rule = json!({
+                    "type": "CHOICE",
+                    "members": members
+                });
+
+                rules_map.insert(e.ident.to_string(), rule);
+
+                (e.ident.to_string(), e.attrs.clone())
+            }
+
+            Item::Struct(s) => {
+                gen_struct_or_variant(
+                    s.ident.to_string(),
+                    s.attrs.clone(),
+                    s.fields.clone(),
                     &mut rules_map,
-                )
-            });
+                );
 
-            let mut members: Vec<Value> = vec![];
-            e.variants.iter().for_each(|v| {
-                let variant_path = format!("{}_{}", e.ident.clone(), v.ident);
-                members.push(json!({
-                    "type": "SYMBOL",
-                    "name": variant_path
-                }))
-            });
+                (s.ident.to_string(), s.attrs.clone())
+            }
 
-            let rule = json!({
-                "type": "CHOICE",
-                "members": members
-            });
+            _ => panic!(),
+        };
 
-            rules_map.insert(e.ident.to_string(), rule);
+        if attrs
+            .iter()
+            .any(|a| a.path == syn::parse_quote!(rust_sitter::extra))
+        {
+            extras_list.push(json!({
+                "type": "SYMBOL",
+                "name": symbol
+            }));
         }
-
-        _ => panic!(),
     });
 
     json!({
         "name": "grammar",
-        "rules": rules_map
+        "rules": rules_map,
+        "extras": extras_list
     })
 }
 
@@ -324,6 +359,33 @@ mod tests {
                         (),
                         Box<Expression>
                     ),
+                }
+            }
+        } {
+            m
+        } else {
+            panic!()
+        };
+
+        insta::assert_display_snapshot!(generate_grammar(&m));
+    }
+
+    #[test]
+    fn grammar_with_extras() {
+        let m = if let syn::Item::Mod(m) = parse_quote! {
+            mod ffi {
+                #[rust_sitter::language]
+                pub enum Expression {
+                    Number(
+                        #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
+                        i32
+                    ),
+                }
+
+                #[rust_sitter::extra]
+                struct Whitespace {
+                    #[rust_sitter::leaf(pattern = r"\s", transform = |_v| ())]
+                    _whitespace: (),
                 }
             }
         } {

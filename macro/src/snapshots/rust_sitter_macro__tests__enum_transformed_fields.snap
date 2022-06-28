@@ -16,7 +16,7 @@ mod ffi {
             #[allow(non_snake_case)]
             fn extract_Expression_Number(node: tree_sitter::Node, source: &[u8]) -> Expression {
                 Expression::Number(extract_Expression_Number_0(
-                    node.child(0usize).unwrap(),
+                    node.child_by_field_name("0").unwrap(),
                     source,
                 ))
             }
