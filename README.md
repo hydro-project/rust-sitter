@@ -27,7 +27,7 @@ Now that we have the type defined, we must annotate the enum variants to describ
 
 ```rust
 Number(
-    #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse().unwrap())]
+    #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
     u32,
 )
 ```
@@ -37,7 +37,7 @@ For the `Add` variant, things are a bit more complicated. First, we add an extra
 ```rust
 Add(
     Box<Expression>,
-    #[rust_sitter::leaf(text = "+", transform = |_v| ())] (),
+    #[rust_sitter::leaf(text = "+")] (),
     Box<Expression>,
 )
 ```
@@ -48,7 +48,7 @@ If we try to compile this grammar, however, we will see ane error due to conflic
 #[rust_sitter::prec_left(1)]
 Add(
     Box<Expression>,
-    #[rust_sitter::leaf(text = "+", transform = |_v| ())] (),
+    #[rust_sitter::leaf(text = "+")] (),
     Box<Expression>,
 )
 ```
@@ -61,13 +61,13 @@ mod grammar {
     #[rust_sitter::language]
     pub enum Expr {
         Number(
-            #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse().unwrap())]
+            #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
             u32,
         ),
         #[rust_sitter::prec_left(1)]
         Add(
             Box<Expression>,
-            #[rust_sitter::leaf(text = "+", transform = |_v| ())] (),
+            #[rust_sitter::leaf(text = "+")] (),
             Box<Expression>,
         )
     }
@@ -79,7 +79,7 @@ We can then parse text using this grammar:
 ```rust
 dbg!(grammar::parse("1+2+3"));
 /*
-grammar::parse("1+2+3") = Add(
+grammar::parse("1+2+3") = Ok(Add(
     Add(
         Number(
             1,
@@ -93,6 +93,6 @@ grammar::parse("1+2+3") = Add(
     Number(
         3,
     ),
-)
+))
 */
 ```
