@@ -1,6 +1,5 @@
 use proc_macro2::Span;
 use quote::ToTokens;
-use spanned::Spanned;
 use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
@@ -30,7 +29,7 @@ impl Parse for NameValueExpr {
 }
 
 fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
-    let extract_ident = Ident::new(&format!("extract_{}", path), leaf.span());
+    let extract_ident = Ident::new(&format!("extract_{}", path), Span::call_site());
     let leaf_type = leaf.ty;
 
     let leaf_text_expr: Expr = syn::parse_quote! {
@@ -53,11 +52,17 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
             .map(|p| p.expr.clone())
     });
 
-    let leaf_expr: Expr = match transform_param {
+    let (leaf_stmts, leaf_expr): (Vec<Stmt>, Expr) = match transform_param {
         Some(closure) => {
-            syn::parse_quote! {
-                (#closure)(#leaf_text_expr)
-            }
+            (vec![
+                syn::parse_quote! {
+                    fn make_transform() -> impl Fn(&str) -> #leaf_type {
+                        #closure
+                    }
+                }
+            ], syn::parse_quote! {
+                make_transform()(#leaf_text_expr)
+            })
         }
         None => {
             if let Type::Path(p) = &leaf_type {
@@ -70,9 +75,9 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
                             panic!("Expected angle bracketed path");
                         };
 
-                    syn::parse_quote! {
+                    (vec![], syn::parse_quote! {
                         Box::new(#leaf_type::extract(node, source))
-                    }
+                    })
                 } else {
                     panic!("Unexpected leaf type");
                 }
@@ -85,6 +90,7 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
     out.push(syn::parse_quote! {
         #[allow(non_snake_case)]
         fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> #leaf_type {
+            #(#leaf_stmts)*
             #leaf_expr
         }
     });
@@ -112,10 +118,7 @@ fn gen_struct_or_variant(
 
     let extract_ident = Ident::new(
         &format!("extract_{}", path),
-        variant_ident
-            .as_ref()
-            .map(|v| v.span())
-            .unwrap_or_else(|| containing_type.span()),
+        Span::call_site(),
     );
 
     if let Some(variant_ident) = variant_ident {
@@ -130,7 +133,7 @@ fn gen_struct_or_variant(
                     .unwrap_or(format!("{}", i));
                 let ident = Ident::new(
                     &format!("extract_{}_{}", path.clone(), ident_str),
-                    field.span(),
+                    Span::call_site(),
                 );
 
                 syn::parse_quote! {
@@ -159,7 +162,7 @@ fn gen_struct_or_variant(
                     .unwrap_or(format!("{}", i));
                 let ident = Ident::new(
                     &format!("extract_{}_{}", path.clone(), ident_str),
-                    field.span(),
+                    Span::call_site(),
                 );
 
                 let field_name = field.ident.as_ref().unwrap();
@@ -245,7 +248,7 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                 let mut match_cases: Vec<Arm> = vec![];
                 e.variants.iter().for_each(|v| {
                     let variant_path = format!("{}_{}", e.ident, v.ident);
-                    let extract_ident = Ident::new(&format!("extract_{}", variant_path), v.span());
+                    let extract_ident = Ident::new(&format!("extract_{}", variant_path), Span::call_site());
                     match_cases.push(syn::parse_quote! {
                         #variant_path => #extract_ident(node.child(0).unwrap(), source)
                     });
@@ -294,7 +297,7 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                 });
 
                 let struct_name = &s.ident;
-                let extract_ident = Ident::new(&format!("extract_{}", struct_name), s.span());
+                let extract_ident = Ident::new(&format!("extract_{}", struct_name), Span::call_site());
 
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #struct_name {

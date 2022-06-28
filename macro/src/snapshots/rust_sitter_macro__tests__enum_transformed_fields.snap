@@ -11,7 +11,10 @@ mod ffi {
         fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
             #[allow(non_snake_case)]
             fn extract_Expression_Number_0(node: tree_sitter::Node, source: &[u8]) -> i32 {
-                (|v: &str| v.parse::<i32>().unwrap())(node.utf8_text(source).unwrap())
+                fn make_transform() -> impl Fn(&str) -> i32 {
+                    |v: &str| v.parse::<i32>().unwrap()
+                }
+                make_transform()(node.utf8_text(source).unwrap())
             }
             #[allow(non_snake_case)]
             fn extract_Expression_Number(node: tree_sitter::Node, source: &[u8]) -> Expression {

@@ -10,7 +10,7 @@ pub mod arithmetic_grammar {
     #[derive(Debug)]
     pub enum Expression {
         Number(
-            #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse().unwrap())] i32,
+            #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())] i32,
         ),
         #[rust_sitter::prec_left(1)]
         Sub(
