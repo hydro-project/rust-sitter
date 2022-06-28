@@ -1,6 +1,6 @@
 ---
 source: macro/src/lib.rs
-expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            mod ffi\n                            {\n                                #[rust_sitter :: language] pub enum Expression\n                                {\n                                    Number(#[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v : & str | v.parse ::\n                                    < i32 > ().unwrap())] i32),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
+expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod ffi\n                            {\n                                #[rust_sitter :: language] pub enum Expression\n                                {\n                                    Number(#[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v : & str | v.parse ::\n                                    < i32 > ().unwrap())] i32),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
 ---
 mod ffi {
     pub enum Expression {
@@ -27,10 +27,10 @@ mod ffi {
         }
     }
     extern "C" {
-        fn tree_sitter_grammar() -> tree_sitter::Language;
+        fn tree_sitter_test() -> tree_sitter::Language;
     }
     fn language() -> tree_sitter::Language {
-        unsafe { tree_sitter_grammar() }
+        unsafe { tree_sitter_test() }
     }
     pub fn parse(
         input: &str,

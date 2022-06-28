@@ -169,6 +169,27 @@ fn generate_grammar(module: &ItemMod) -> Value {
     let mut rules_map = Map::new();
     let mut extras_list = vec![];
 
+    let grammar_name = module
+        .attrs
+        .iter()
+        .find_map(|a| {
+            if a.path == syn::parse_quote!(rust_sitter::grammar) {
+                let grammar_name_expr = a.parse_args_with(Expr::parse).ok();
+                if let Some(Expr::Lit(ExprLit {
+                    attrs: _,
+                    lit: Lit::Str(s),
+                })) = grammar_name_expr
+                {
+                    Some(s.value())
+                } else {
+                    panic!("Expected string literal for grammar name");
+                }
+            } else {
+                None
+            }
+        })
+        .expect("Each grammar must have a name");
+
     let (_, contents) = module.content.as_ref().unwrap();
 
     let root_type = contents
@@ -259,7 +280,7 @@ fn generate_grammar(module: &ItemMod) -> Value {
     });
 
     json!({
-        "name": "grammar",
+        "name": grammar_name,
         "rules": rules_map,
         "extras": extras_list
     })
@@ -298,6 +319,7 @@ mod tests {
     #[test]
     fn enum_transformed_fields() {
         let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
             mod ffi {
                 #[rust_sitter::language]
                 pub enum Expression {
@@ -319,6 +341,7 @@ mod tests {
     #[test]
     fn enum_recursive() {
         let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
             mod ffi {
                 #[rust_sitter::language]
                 pub enum Expression {
@@ -345,6 +368,7 @@ mod tests {
     #[test]
     fn enum_prec_left() {
         let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
             mod ffi {
                 #[rust_sitter::language]
                 pub enum Expression {
@@ -373,6 +397,7 @@ mod tests {
     #[test]
     fn grammar_with_extras() {
         let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
             mod ffi {
                 #[rust_sitter::language]
                 pub enum Expression {

@@ -4,7 +4,7 @@ use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level, SpanLabel, SpanStyle};
 use rust_sitter::errors::{ParseError, ParseErrorReason};
 
-#[rust_sitter::grammar]
+#[rust_sitter::grammar("simple_math")]
 pub mod arithmetic_grammar {
     #[rust_sitter::language]
     #[derive(Debug)]

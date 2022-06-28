@@ -186,6 +186,27 @@ fn gen_struct_or_variant(
 }
 
 fn expand_grammar(input: ItemMod) -> ItemMod {
+    let grammar_name = input
+        .attrs
+        .iter()
+        .find_map(|a| {
+            if a.path == syn::parse_quote!(rust_sitter::grammar) {
+                let grammar_name_expr = a.parse_args_with(Expr::parse).ok();
+                if let Some(Expr::Lit(ExprLit {
+                    attrs: _,
+                    lit: Lit::Str(s),
+                })) = grammar_name_expr
+                {
+                    Some(s.value())
+                } else {
+                    panic!("Expected string literal for grammar name");
+                }
+            } else {
+                None
+            }
+        })
+        .expect("Each grammar must have a name");
+
     let (brace, new_contents) = input.content.unwrap();
 
     let root_type = new_contents
@@ -293,15 +314,17 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
         })
         .collect();
 
+    let tree_sitter_ident = Ident::new(&format!("tree_sitter_{}", grammar_name), Span::call_site());
+
     transformed.push(syn::parse_quote! {
         extern "C" {
-            fn tree_sitter_grammar() -> tree_sitter::Language;
+            fn #tree_sitter_ident() -> tree_sitter::Language;
         }
     });
 
     transformed.push(syn::parse_quote! {
         fn language() -> tree_sitter::Language {
-            unsafe { tree_sitter_grammar() }
+            unsafe { #tree_sitter_ident() }
         }
     });
 
@@ -328,8 +351,10 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
         }
     });
 
+    let mut filtered_attrs = input.attrs;
+    filtered_attrs.retain(|a| !is_sitter_attr(a));
     ItemMod {
-        attrs: input.attrs,
+        attrs: filtered_attrs,
         vis: input.vis,
         mod_token: input.mod_token,
         ident: input.ident,
@@ -365,10 +390,15 @@ pub fn prec_left(
 /// Mark a module to be analyzed for a Tree Sitter grammar.
 #[proc_macro_attribute]
 pub fn grammar(
-    _attr: proc_macro::TokenStream,
+    attr: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    let expanded: ItemMod = expand_grammar(parse_macro_input!(input));
+    let attrs: AttributeArgs = parse_macro_input!(attr);
+    let module: ItemMod = parse_macro_input!(input);
+    let expanded: ItemMod = expand_grammar(syn::parse_quote! {
+        #[rust_sitter::grammar[#(#attrs),*]]
+        #module
+    });
     proc_macro::TokenStream::from(expanded.to_token_stream())
 }
 
@@ -411,6 +441,7 @@ mod tests {
     fn enum_transformed_fields() {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
+                #[rust_sitter::grammar("test")]
                 mod ffi {
                     #[rust_sitter::language]
                     pub enum Expression {
@@ -430,6 +461,7 @@ mod tests {
     fn enum_recursive() {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
+                #[rust_sitter::grammar("test")]
                 mod ffi {
                     #[rust_sitter::language]
                     pub enum Expression {
@@ -454,6 +486,7 @@ mod tests {
     fn enum_prec_left() {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
+                #[rust_sitter::grammar("test")]
                 mod ffi {
                     #[rust_sitter::language]
                     pub enum Expression {
@@ -480,6 +513,7 @@ mod tests {
     fn struct_extra() {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
+                #[rust_sitter::grammar("test")]
                 mod ffi {
                     #[rust_sitter::language]
                     pub enum Expression {
