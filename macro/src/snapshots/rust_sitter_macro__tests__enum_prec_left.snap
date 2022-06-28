@@ -11,6 +11,7 @@ mod ffi {
         #[allow(non_snake_case)]
         fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
             #[allow(non_snake_case)]
+            #[allow(clippy::unused_unit)]
             fn extract_Expression_Number_0(node: tree_sitter::Node, source: &[u8]) -> i32 {
                 fn make_transform() -> impl Fn(&str) -> i32 {
                     |v| v.parse().unwrap()
@@ -25,14 +26,17 @@ mod ffi {
                 ))
             }
             #[allow(non_snake_case)]
+            #[allow(clippy::unused_unit)]
             fn extract_Expression_Sub_0(node: tree_sitter::Node, source: &[u8]) -> Box<Expression> {
                 Box::new(Expression::extract(node, source))
             }
             #[allow(non_snake_case)]
+            #[allow(clippy::unused_unit)]
             fn extract_Expression_Sub_1(node: tree_sitter::Node, source: &[u8]) -> () {
                 ()
             }
             #[allow(non_snake_case)]
+            #[allow(clippy::unused_unit)]
             fn extract_Expression_Sub_2(node: tree_sitter::Node, source: &[u8]) -> Box<Expression> {
                 Box::new(Expression::extract(node, source))
             }
