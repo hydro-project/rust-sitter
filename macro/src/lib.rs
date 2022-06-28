@@ -53,19 +53,25 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
     });
 
     let (leaf_stmts, leaf_expr): (Vec<Stmt>, Expr) = match transform_param {
-        Some(closure) => {
-            (vec![
-                syn::parse_quote! {
-                    fn make_transform() -> impl Fn(&str) -> #leaf_type {
-                        #closure
-                    }
+        Some(closure) => (
+            vec![syn::parse_quote! {
+                fn make_transform() -> impl Fn(&str) -> #leaf_type {
+                    #closure
                 }
-            ], syn::parse_quote! {
+            }],
+            syn::parse_quote! {
                 make_transform()(#leaf_text_expr)
-            })
-        }
+            },
+        ),
         None => {
-            if let Type::Path(p) = &leaf_type {
+            if leaf_type == syn::parse_quote!(()) {
+                (
+                    vec![],
+                    syn::parse_quote! {
+                        ()
+                    },
+                )
+            } else if let Type::Path(p) = &leaf_type {
                 let type_segment = p.path.segments.first().unwrap();
                 if type_segment.ident == "Box" {
                     let leaf_type =
@@ -75,9 +81,12 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
                             panic!("Expected angle bracketed path");
                         };
 
-                    (vec![], syn::parse_quote! {
-                        Box::new(#leaf_type::extract(node, source))
-                    })
+                    (
+                        vec![],
+                        syn::parse_quote! {
+                            Box::new(#leaf_type::extract(node, source))
+                        },
+                    )
                 } else {
                     panic!("Unexpected leaf type");
                 }
@@ -89,6 +98,7 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
 
     out.push(syn::parse_quote! {
         #[allow(non_snake_case)]
+        #[allow(clippy::unused_unit)]
         fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> #leaf_type {
             #(#leaf_stmts)*
             #leaf_expr
@@ -116,10 +126,7 @@ fn gen_struct_or_variant(
         );
     });
 
-    let extract_ident = Ident::new(
-        &format!("extract_{}", path),
-        Span::call_site(),
-    );
+    let extract_ident = Ident::new(&format!("extract_{}", path), Span::call_site());
 
     if let Some(variant_ident) = variant_ident {
         let children_parsed = fields
@@ -248,7 +255,8 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                 let mut match_cases: Vec<Arm> = vec![];
                 e.variants.iter().for_each(|v| {
                     let variant_path = format!("{}_{}", e.ident, v.ident);
-                    let extract_ident = Ident::new(&format!("extract_{}", variant_path), Span::call_site());
+                    let extract_ident =
+                        Ident::new(&format!("extract_{}", variant_path), Span::call_site());
                     match_cases.push(syn::parse_quote! {
                         #variant_path => #extract_ident(node.child(0).unwrap(), source)
                     });
@@ -297,7 +305,8 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                 });
 
                 let struct_name = &s.ident;
-                let extract_ident = Ident::new(&format!("extract_{}", struct_name), Span::call_site());
+                let extract_ident =
+                    Ident::new(&format!("extract_{}", struct_name), Span::call_site());
 
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #struct_name {
@@ -449,7 +458,7 @@ mod tests {
                     #[rust_sitter::language]
                     pub enum Expression {
                         Number(
-                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
+                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse::<i32>().unwrap())]
                             i32
                         ),
                     }
@@ -469,11 +478,11 @@ mod tests {
                     #[rust_sitter::language]
                     pub enum Expression {
                         Number(
-                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
+                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
                             i32
                         ),
                         Neg(
-                            #[rust_sitter::leaf(text = "-", transform = |v| ())]
+                            #[rust_sitter::leaf(text = "-")]
                             (),
                             Box<Expression>
                         ),
@@ -494,13 +503,13 @@ mod tests {
                     #[rust_sitter::language]
                     pub enum Expression {
                         Number(
-                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
+                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
                             i32
                         ),
                         #[rust_sitter::prec_left(1)]
                         Sub(
                             Box<Expression>,
-                            #[rust_sitter::leaf(text = "-", transform = |v| ())]
+                            #[rust_sitter::leaf(text = "-")]
                             (),
                             Box<Expression>
                         ),
@@ -521,13 +530,13 @@ mod tests {
                     #[rust_sitter::language]
                     pub enum Expression {
                         Number(
-                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse().unwrap())] i32,
+                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())] i32,
                         ),
                     }
 
                     #[rust_sitter::extra]
                     struct Whitespace {
-                        #[rust_sitter::leaf(pattern = r"\s", transform = |_v| ())]
+                        #[rust_sitter::leaf(pattern = r"\s")]
                         _whitespace: (),
                     }
                 }

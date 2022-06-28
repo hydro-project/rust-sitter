@@ -1,6 +1,6 @@
 ---
 source: macro/src/lib.rs
-expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod ffi\n                            {\n                                #[rust_sitter :: language] pub enum Expression\n                                {\n                                    Number(#[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v : & str | v.parse ::\n                                    < i32 > ().unwrap())] i32),\n                                    Neg(#[rust_sitter :: leaf(text = \"-\", transform = | v | ())]\n                                    (), Box < Expression >),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
+expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod ffi\n                            {\n                                #[rust_sitter :: language] pub enum Expression\n                                {\n                                    Number(#[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] i32),\n                                    Neg(#[rust_sitter :: leaf(text = \"-\")] (), Box < Expression\n                                    >),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
 ---
 mod ffi {
     pub enum Expression {
@@ -13,7 +13,7 @@ mod ffi {
             #[allow(non_snake_case)]
             fn extract_Expression_Number_0(node: tree_sitter::Node, source: &[u8]) -> i32 {
                 fn make_transform() -> impl Fn(&str) -> i32 {
-                    |v: &str| v.parse::<i32>().unwrap()
+                    |v| v.parse().unwrap()
                 }
                 make_transform()(node.utf8_text(source).unwrap())
             }
@@ -26,10 +26,7 @@ mod ffi {
             }
             #[allow(non_snake_case)]
             fn extract_Expression_Neg_0(node: tree_sitter::Node, source: &[u8]) -> () {
-                fn make_transform() -> impl Fn(&str) -> () {
-                    |v| ()
-                }
-                make_transform()(node.utf8_text(source).unwrap())
+                ()
             }
             #[allow(non_snake_case)]
             fn extract_Expression_Neg_1(node: tree_sitter::Node, source: &[u8]) -> Box<Expression> {

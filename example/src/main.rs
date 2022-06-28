@@ -9,26 +9,24 @@ pub mod arithmetic_grammar {
     #[rust_sitter::language]
     #[derive(Debug)]
     pub enum Expression {
-        Number(
-            #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())] i32,
-        ),
+        Number(#[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())] i32),
         #[rust_sitter::prec_left(1)]
         Sub(
             Box<Expression>,
-            #[rust_sitter::leaf(text = "-", transform = |_v| ())] (),
+            #[rust_sitter::leaf(text = "-")] (),
             Box<Expression>,
         ),
         #[rust_sitter::prec_left(2)]
         Mul(
             Box<Expression>,
-            #[rust_sitter::leaf(text = "*", transform = |_v| ())] (),
+            #[rust_sitter::leaf(text = "*")] (),
             Box<Expression>,
         ),
     }
 
     #[rust_sitter::extra]
     struct Whitespace {
-        #[rust_sitter::leaf(pattern = r"\s", transform = |_v| ())]
+        #[rust_sitter::leaf(pattern = r"\s")]
         _whitespace: (),
     }
 }
