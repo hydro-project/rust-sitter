@@ -1,0 +1,98 @@
+---
+source: macro/src/lib.rs
+expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod ffi\n                            {\n                                #[rust_sitter :: language] pub struct NumberList\n                                { numbers : Vec < Number >, } pub struct Number\n                                {\n                                    #[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] v : i32\n                                } #[rust_sitter :: extra] struct Whitespace\n                                {\n                                    #[rust_sitter :: leaf(pattern = r\"\\s\")] _whitespace : (),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
+---
+mod ffi {
+    pub struct NumberList {
+        numbers: Vec<Number>,
+    }
+    impl rust_sitter::Extract for NumberList {
+        #[allow(non_snake_case)]
+        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+            #[allow(non_snake_case)]
+            #[allow(clippy::unused_unit)]
+            fn extract_NumberList_numbers(node: tree_sitter::Node, source: &[u8]) -> Vec<Number> {
+                let mut cursor = node.walk();
+                node.children_by_field_name("numbers", &mut cursor)
+                    .map(|n| Number::extract(n, source))
+                    .collect::<Vec<Number>>()
+            }
+            #[allow(non_snake_case)]
+            fn extract_NumberList(node: tree_sitter::Node, source: &[u8]) -> NumberList {
+                NumberList {
+                    numbers: extract_NumberList_numbers(node, source),
+                }
+            }
+            extract_NumberList(node, source)
+        }
+    }
+    pub struct Number {
+        v: i32,
+    }
+    impl rust_sitter::Extract for Number {
+        #[allow(non_snake_case)]
+        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+            #[allow(non_snake_case)]
+            #[allow(clippy::unused_unit)]
+            fn extract_Number_v(node: tree_sitter::Node, source: &[u8]) -> i32 {
+                fn make_transform() -> impl Fn(&str) -> i32 {
+                    |v| v.parse().unwrap()
+                }
+                make_transform()(node.utf8_text(source).unwrap())
+            }
+            #[allow(non_snake_case)]
+            fn extract_Number(node: tree_sitter::Node, source: &[u8]) -> Number {
+                Number {
+                    v: extract_Number_v(node.child_by_field_name("v").unwrap(), source),
+                }
+            }
+            extract_Number(node, source)
+        }
+    }
+    struct Whitespace {
+        _whitespace: (),
+    }
+    impl rust_sitter::Extract for Whitespace {
+        #[allow(non_snake_case)]
+        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+            #[allow(non_snake_case)]
+            #[allow(clippy::unused_unit)]
+            fn extract_Whitespace__whitespace(node: tree_sitter::Node, source: &[u8]) -> () {
+                ()
+            }
+            #[allow(non_snake_case)]
+            fn extract_Whitespace(node: tree_sitter::Node, source: &[u8]) -> Whitespace {
+                Whitespace {
+                    _whitespace: extract_Whitespace__whitespace(
+                        node.child_by_field_name("_whitespace").unwrap(),
+                        source,
+                    ),
+                }
+            }
+            extract_Whitespace(node, source)
+        }
+    }
+    extern "C" {
+        fn tree_sitter_test() -> tree_sitter::Language;
+    }
+    fn language() -> tree_sitter::Language {
+        unsafe { tree_sitter_test() }
+    }
+    pub fn parse(
+        input: &str,
+    ) -> core::result::Result<NumberList, Vec<rust_sitter::errors::ParseError>> {
+        let mut parser = tree_sitter::Parser::new();
+        parser.set_language(language()).unwrap();
+        let tree = parser.parse(input, None).unwrap();
+        let root_node = tree.root_node();
+        if root_node.has_error() {
+            let mut errors = vec![];
+            rust_sitter::errors::collect_parsing_errors(&root_node, input.as_bytes(), &mut errors);
+            Err(errors)
+        } else {
+            use rust_sitter::Extract;
+            Ok(NumberList::extract(root_node, input.as_bytes()))
+        }
+    }
+}
+

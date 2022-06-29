@@ -72,10 +72,7 @@ mod ffi {
             Err(errors)
         } else {
             use rust_sitter::Extract;
-            Ok(Expression::extract(
-                root_node.child(0).unwrap(),
-                input.as_bytes(),
-            ))
+            Ok(Expression::extract(root_node, input.as_bytes()))
         }
     }
 }

@@ -5,10 +5,10 @@ expression: "arithmetic_grammar::parse(\"1 - 2 -\")"
 Err(
     [
         ParseError {
-            reason: FailedNode(
-                [],
+            reason: MissingToken(
+                "Expression_Number_0",
             ),
-            start: 6,
+            start: 7,
             end: 7,
         },
     ],

@@ -31,6 +31,29 @@ pub mod arithmetic_grammar {
     }
 }
 
+#[rust_sitter::grammar("repetitions")]
+pub mod repetitions {
+    #[rust_sitter::language]
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    pub struct NumberList {
+        numbers: Vec<Number>,
+    }
+
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    pub struct Number {
+        #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+        v: i32,
+    }
+
+    #[rust_sitter::extra]
+    struct Whitespace {
+        #[rust_sitter::leaf(pattern = r"\s")]
+        _whitespace: (),
+    }
+}
+
 fn convert_parse_error_to_diagnostics(
     file_span: &codemap::Span,
     error: &ParseError,
@@ -113,7 +136,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::arithmetic_grammar;
+    use super::*;
 
     #[test]
     fn arithmetic_grammar() {
@@ -130,5 +153,11 @@ mod tests {
         insta::assert_debug_snapshot!(arithmetic_grammar::parse("1 - 2 -"));
         insta::assert_debug_snapshot!(arithmetic_grammar::parse("a1"));
         insta::assert_debug_snapshot!(arithmetic_grammar::parse("1a"));
+    }
+
+    #[test]
+    fn repetitions_grammar() {
+        insta::assert_debug_snapshot!(repetitions::parse("1"));
+        insta::assert_debug_snapshot!(repetitions::parse("1 2"));
     }
 }

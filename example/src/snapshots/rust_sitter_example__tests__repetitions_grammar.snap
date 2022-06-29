@@ -1,0 +1,13 @@
+---
+source: example/src/main.rs
+expression: "repetitions::parse(\"1\")"
+---
+Ok(
+    NumberList {
+        numbers: [
+            Number {
+                v: 1,
+            },
+        ],
+    },
+)

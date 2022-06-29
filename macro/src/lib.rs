@@ -28,6 +28,20 @@ impl Parse for NameValueExpr {
     }
 }
 
+enum ParamOrField {
+    Param(Expr),
+    Field(FieldValue),
+}
+
+impl ToTokens for ParamOrField {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        match self {
+            ParamOrField::Param(expr) => expr.to_tokens(tokens),
+            ParamOrField::Field(field) => field.to_tokens(tokens),
+        }
+    }
+}
+
 fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
     let extract_ident = Ident::new(&format!("extract_{}", path), Span::call_site());
     let leaf_type = leaf.ty;
@@ -87,8 +101,29 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
                             Box::new(#leaf_type::extract(node, source))
                         },
                     )
+                } else if type_segment.ident == "Vec" {
+                    let leaf_type =
+                        if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
+                            p.args.first().unwrap().clone()
+                        } else {
+                            panic!("Expected angle bracketed path");
+                        };
+
+                    let field_name = leaf.ident.unwrap().to_string();
+
+                    (
+                        vec![syn::parse_quote! {
+                            let mut cursor = node.walk();
+                        }],
+                        syn::parse_quote! {
+                            node
+                                .children_by_field_name(#field_name, &mut cursor)
+                                .map(|n| #leaf_type::extract(n, source))
+                                .collect::<Vec<#leaf_type>>()
+                        },
+                    )
                 } else {
-                    panic!("Unexpected leaf type");
+                    panic!("Unexpected leaf type: {}", leaf_type.to_token_stream());
                 }
             } else {
                 panic!("Unexpected leaf type");
@@ -128,27 +163,52 @@ fn gen_struct_or_variant(
 
     let extract_ident = Ident::new(&format!("extract_{}", path), Span::call_site());
 
-    if let Some(variant_ident) = variant_ident {
-        let children_parsed = fields
-            .iter()
-            .enumerate()
-            .map(|(i, field)| {
-                let ident_str = field
-                    .ident
-                    .as_ref()
-                    .map(|v| v.to_string())
-                    .unwrap_or(format!("{}", i));
-                let ident = Ident::new(
-                    &format!("extract_{}_{}", path.clone(), ident_str),
-                    Span::call_site(),
-                );
+    let children_parsed = fields
+        .iter()
+        .enumerate()
+        .map(|(i, field)| {
+            let ident_str = field
+                .ident
+                .as_ref()
+                .map(|v| v.to_string())
+                .unwrap_or(format!("{}", i));
+            let ident = Ident::new(
+                &format!("extract_{}_{}", path.clone(), ident_str),
+                Span::call_site(),
+            );
 
+            let is_vec = if let Type::Path(p) = &field.ty {
+                let type_segment = p.path.segments.first().unwrap();
+                type_segment.ident == "Vec"
+            } else {
+                false
+            };
+
+            let expr = if is_vec {
+                syn::parse_quote! {
+                    #ident(node, source)
+                }
+            } else {
                 syn::parse_quote! {
                     #ident(node.child_by_field_name(#ident_str).unwrap(), source)
                 }
-            })
-            .collect::<Vec<Expr>>();
+            };
 
+            if field.ident.is_none() {
+                ParamOrField::Param(expr)
+            } else {
+                let field_name = field.ident.as_ref().unwrap();
+                ParamOrField::Field(FieldValue {
+                    attrs: vec![],
+                    member: Member::Named(field_name.clone()),
+                    colon_token: Some(Token![:](Span::call_site())),
+                    expr,
+                })
+            }
+        })
+        .collect::<Vec<ParamOrField>>();
+
+    if let Some(variant_ident) = variant_ident {
         out.push(syn::parse_quote! {
             #[allow(non_snake_case)]
             fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> #containing_type {
@@ -158,32 +218,6 @@ fn gen_struct_or_variant(
             }
         });
     } else {
-        let children_parsed = fields
-            .iter()
-            .enumerate()
-            .map(|(i, field)| {
-                let ident_str = field
-                    .ident
-                    .as_ref()
-                    .map(|v| v.to_string())
-                    .unwrap_or(format!("{}", i));
-                let ident = Ident::new(
-                    &format!("extract_{}_{}", path.clone(), ident_str),
-                    Span::call_site(),
-                );
-
-                let field_name = field.ident.as_ref().unwrap();
-                FieldValue {
-                    attrs: vec![],
-                    member: Member::Named(field_name.clone()),
-                    colon_token: Some(Token![:](Span::call_site())),
-                    expr: syn::parse_quote! {
-                        #ident(node.child_by_field_name(#ident_str).unwrap(), source)
-                    },
-                }
-            })
-            .collect::<Vec<FieldValue>>();
-
         out.push(syn::parse_quote! {
             #[allow(non_snake_case)]
             fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> #containing_type {
@@ -222,12 +256,13 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
     let root_type = new_contents
         .iter()
         .find_map(|item| match item {
-            Item::Enum(e) => {
-                if e.attrs
+            Item::Enum(ItemEnum { ident, attrs, .. })
+            | Item::Struct(ItemStruct { ident, attrs, .. }) => {
+                if attrs
                     .iter()
                     .any(|attr| attr.path == syn::parse_quote!(rust_sitter::language))
                 {
-                    Some(e.ident.clone())
+                    Some(ident.clone())
                 } else {
                     None
                 }
@@ -313,7 +348,6 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                         #[allow(non_snake_case)]
                         fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
                             #(#impl_body)*
-
                             #extract_ident(node, source)
                         }
                     }
@@ -358,7 +392,7 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                 Err(errors)
             } else {
                 use rust_sitter::Extract;
-                Ok(#root_type::extract(root_node.child(0).unwrap(), input.as_bytes()))
+                Ok(#root_type::extract(root_node, input.as_bytes()))
             }
         }
     });
@@ -532,6 +566,34 @@ mod tests {
                         Number(
                             #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())] i32,
                         ),
+                    }
+
+                    #[rust_sitter::extra]
+                    struct Whitespace {
+                        #[rust_sitter::leaf(pattern = r"\s")]
+                        _whitespace: (),
+                    }
+                }
+            })
+            .to_token_stream()
+            .to_string()
+        ));
+    }
+
+    #[test]
+    fn struct_repeat() {
+        insta::assert_display_snapshot!(rustfmt_code(
+            &expand_grammar(parse_quote! {
+                #[rust_sitter::grammar("test")]
+                mod ffi {
+                    #[rust_sitter::language]
+                    pub struct NumberList {
+                        numbers: Vec<Number>,
+                    }
+
+                    pub struct Number {
+                        #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+                        v: i32
                     }
 
                     #[rust_sitter::extra]

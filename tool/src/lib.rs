@@ -102,6 +102,30 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                 "type": "SYMBOL",
                 "name": leaf_type.path.segments.first().unwrap().ident.to_string(),
             })
+        } else if type_segment.ident == "Vec" {
+            let leaf_type = if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
+                p.args.first().unwrap().clone()
+            } else {
+                panic!("Expected angle bracketed path");
+            };
+
+            let leaf_type = if let GenericArgument::Type(Type::Path(t)) = leaf_type {
+                t
+            } else {
+                panic!("Expected type");
+            };
+
+            json!({
+                "type": "REPEAT",
+                "content": {
+                    "type": "FIELD",
+                    "name": leaf.ident.unwrap().to_string(),
+                    "content": {
+                        "type": "SYMBOL",
+                        "name": leaf_type.path.segments.first().unwrap().ident.to_string(),
+                    }
+                }
+            })
         } else {
             panic!("Unexpected leaf type");
         }
@@ -167,6 +191,9 @@ fn gen_struct_or_variant(
 
 fn generate_grammar(module: &ItemMod) -> Value {
     let mut rules_map = Map::new();
+    // for some reason, source_file must be the first key for things to work
+    rules_map.insert("source_file".to_string(), json!({}));
+
     let mut extras_list = vec![];
 
     let grammar_name = module
@@ -195,12 +222,13 @@ fn generate_grammar(module: &ItemMod) -> Value {
     let root_type = contents
         .iter()
         .find_map(|item| match item {
-            Item::Enum(e) => {
-                if e.attrs
+            Item::Enum(ItemEnum { ident, attrs, .. })
+            | Item::Struct(ItemStruct { ident, attrs, .. }) => {
+                if attrs
                     .iter()
                     .any(|attr| attr.path == syn::parse_quote!(rust_sitter::language))
                 {
-                    Some(e.ident.clone())
+                    Some(ident.clone())
                 } else {
                     None
                 }
@@ -209,19 +237,6 @@ fn generate_grammar(module: &ItemMod) -> Value {
         })
         .expect("Each parser must have the root type annotated with `#[rust_sitter::language]`")
         .to_string();
-
-    rules_map.insert(
-        "source_file".to_string(),
-        json!({
-            "type": "ALIAS",
-            "named": false,
-            "value": &root_type,
-            "content": {
-                "type": "SYMBOL",
-                "name": &root_type
-            }
-        }),
-    );
 
     contents.iter().for_each(|c| {
         let (symbol, attrs) = match c {
@@ -278,6 +293,11 @@ fn generate_grammar(module: &ItemMod) -> Value {
             }));
         }
     });
+
+    rules_map.insert(
+        "source_file".to_string(),
+        rules_map.get(&root_type).unwrap().clone(),
+    );
 
     json!({
         "name": grammar_name,

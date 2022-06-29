@@ -14,13 +14,8 @@ fn main() {
             let grammar_file = dir.path().join("parser.c");
             let mut f = File::create(grammar_file).unwrap();
 
-            f.write_all(
-                generate::generate_parser_for_grammar(grammar)
-                    .unwrap()
-                    .1
-                    .as_bytes(),
-            )
-            .unwrap();
+            let (grammar_name, grammar_c) = generate::generate_parser_for_grammar(grammar).unwrap();
+            f.write_all(grammar_c.as_bytes()).unwrap();
             drop(f);
 
             let header_dir: PathBuf = dir.path().join("tree_sitter");
@@ -34,6 +29,6 @@ fn main() {
             cc::Build::new()
                 .include(&dir)
                 .file(dir.path().join("parser.c"))
-                .compile("grammar");
+                .compile(&grammar_name);
         });
 }
