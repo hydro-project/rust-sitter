@@ -12,7 +12,7 @@ categories = ["development-tools"]
 path = "src/lib.rs"
 
 [dependencies]
-tree-sitter = "*"
+tree-sitter = "0.20.6"
 rust_sitter_macro = { path = "../macro" }
 
 [dev-dependencies]
