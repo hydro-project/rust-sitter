@@ -488,7 +488,7 @@ mod tests {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
-                mod ffi {
+                mod grammar {
                     #[rust_sitter::language]
                     pub enum Expression {
                         Number(
@@ -508,7 +508,7 @@ mod tests {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
-                mod ffi {
+                mod grammar {
                     #[rust_sitter::language]
                     pub enum Expression {
                         Number(
@@ -533,7 +533,7 @@ mod tests {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
-                mod ffi {
+                mod grammar {
                     #[rust_sitter::language]
                     pub enum Expression {
                         Number(
@@ -560,7 +560,7 @@ mod tests {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
-                mod ffi {
+                mod grammar {
                     #[rust_sitter::language]
                     pub enum Expression {
                         Number(
@@ -585,7 +585,7 @@ mod tests {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
-                mod ffi {
+                mod grammar {
                     #[rust_sitter::language]
                     pub struct NumberList {
                         numbers: Vec<Number>,

@@ -1,8 +1,8 @@
 ---
 source: macro/src/lib.rs
-expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod ffi\n                            {\n                                #[rust_sitter :: language] pub struct NumberList\n                                { numbers : Vec < Number >, } pub struct Number\n                                {\n                                    #[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] v : i32\n                                } #[rust_sitter :: extra] struct Whitespace\n                                {\n                                    #[rust_sitter :: leaf(pattern = r\"\\s\")] _whitespace : (),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
+expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod grammar\n                            {\n                                #[rust_sitter :: language] pub struct NumberList\n                                { numbers : Vec < Number >, } pub struct Number\n                                {\n                                    #[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] v : i32\n                                } #[rust_sitter :: extra] struct Whitespace\n                                {\n                                    #[rust_sitter :: leaf(pattern = r\"\\s\")] _whitespace : (),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
 ---
-mod ffi {
+mod grammar {
     pub struct NumberList {
         numbers: Vec<Number>,
     }

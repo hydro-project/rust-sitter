@@ -1,8 +1,8 @@
 ---
 source: macro/src/lib.rs
-expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod ffi\n                            {\n                                #[rust_sitter :: language] pub enum Expression\n                                {\n                                    Number(#[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] i32),\n                                    Neg(#[rust_sitter :: leaf(text = \"-\")] (), Box < Expression\n                                    >),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
+expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod grammar\n                            {\n                                #[rust_sitter :: language] pub enum Expression\n                                {\n                                    Number(#[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] i32),\n                                    Neg(#[rust_sitter :: leaf(text = \"-\")] (), Box < Expression\n                                    >),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
 ---
-mod ffi {
+mod grammar {
     pub enum Expression {
         Number(i32),
         Neg((), Box<Expression>),

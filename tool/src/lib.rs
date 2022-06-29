@@ -340,7 +340,7 @@ mod tests {
     fn enum_transformed_fields() {
         let m = if let syn::Item::Mod(m) = parse_quote! {
             #[rust_sitter::grammar("test")]
-            mod ffi {
+            mod grammar {
                 #[rust_sitter::language]
                 pub enum Expression {
                     Number(
@@ -362,7 +362,7 @@ mod tests {
     fn enum_recursive() {
         let m = if let syn::Item::Mod(m) = parse_quote! {
             #[rust_sitter::grammar("test")]
-            mod ffi {
+            mod grammar {
                 #[rust_sitter::language]
                 pub enum Expression {
                     Number(
@@ -389,7 +389,7 @@ mod tests {
     fn enum_prec_left() {
         let m = if let syn::Item::Mod(m) = parse_quote! {
             #[rust_sitter::grammar("test")]
-            mod ffi {
+            mod grammar {
                 #[rust_sitter::language]
                 pub enum Expression {
                     Number(
@@ -418,7 +418,7 @@ mod tests {
     fn grammar_with_extras() {
         let m = if let syn::Item::Mod(m) = parse_quote! {
             #[rust_sitter::grammar("test")]
-            mod ffi {
+            mod grammar {
                 #[rust_sitter::language]
                 pub enum Expression {
                     Number(
