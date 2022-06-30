@@ -115,17 +115,58 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                 panic!("Expected type");
             };
 
-            json!({
-                "type": "REPEAT",
+            let delimited_attr = leaf
+                .attrs
+                .iter()
+                .find(|attr| attr.path == syn::parse_quote!(rust_sitter::delimited));
+
+            let delimited_params =
+                delimited_attr.and_then(|a| a.parse_args_with(Field::parse_unnamed).ok());
+
+            let delimiter_json =
+                delimited_params.map(|p| gen_field(format!("{}_{}", path, "delimiter"), p, out));
+
+            let field_rule = json!({
+                "type": "FIELD",
+                "name": leaf.ident.unwrap().to_string(),
                 "content": {
-                    "type": "FIELD",
-                    "name": leaf.ident.unwrap().to_string(),
-                    "content": {
-                        "type": "SYMBOL",
-                        "name": leaf_type.path.segments.first().unwrap().ident.to_string(),
-                    }
+                    "type": "SYMBOL",
+                    "name": leaf_type.path.segments.first().unwrap().ident.to_string(),
                 }
-            })
+            });
+
+            if let Some(delimiter_json) = delimiter_json {
+                json!({
+                    "type": "CHOICE",
+                    "members": [
+                        // optional
+                        {
+                            "type": "BLANK"
+                        },
+                        {
+                            "type": "SEQ",
+                            "members": [
+                                field_rule,
+                                {
+                                    "type": "REPEAT",
+                                    "content": {
+                                        "type": "SEQ",
+                                        "members": [
+                                            delimiter_json,
+                                            field_rule,
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                })
+            } else {
+                json!({
+                    "type": "REPEAT",
+                    "content": field_rule
+                })
+            }
         } else {
             panic!("Unexpected leaf type");
         }
@@ -149,15 +190,29 @@ fn gen_struct_or_variant(
                 .as_ref()
                 .map(|v| v.to_string())
                 .unwrap_or(format!("{}", i));
-            json!({
-                "type": "FIELD",
-                "name": ident_str,
-                "content": gen_field(
-                    format!("{}_{}", path.clone(), ident_str),
-                    field.clone(),
-                    out,
-                )
-            })
+
+            let is_vec = if let Type::Path(p) = &field.ty {
+                let type_segment = p.path.segments.first().unwrap();
+                type_segment.ident == "Vec"
+            } else {
+                false
+            };
+
+            let field_contents = gen_field(
+                format!("{}_{}", path.clone(), ident_str),
+                field.clone(),
+                out,
+            );
+
+            if is_vec {
+                field_contents
+            } else {
+                json!({
+                    "type": "FIELD",
+                    "name": ident_str,
+                    "content": field_contents
+                })
+            }
         })
         .collect::<Vec<Value>>();
 
@@ -430,6 +485,40 @@ mod tests {
                 #[rust_sitter::extra]
                 struct Whitespace {
                     #[rust_sitter::leaf(pattern = r"\s", transform = |_v| ())]
+                    _whitespace: (),
+                }
+            }
+        } {
+            m
+        } else {
+            panic!()
+        };
+
+        insta::assert_display_snapshot!(generate_grammar(&m));
+    }
+
+    #[test]
+    fn grammar_repeat() {
+        let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
+            pub mod grammar {
+                #[rust_sitter::language]
+                pub struct NumberList {
+                    #[rust_sitter::delimited(
+                        #[rust_sitter::leaf(text = ",")]
+                        ()
+                    )]
+                    numbers: Vec<Number>,
+                }
+
+                pub struct Number {
+                    #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+                    v: i32,
+                }
+
+                #[rust_sitter::extra]
+                struct Whitespace {
+                    #[rust_sitter::leaf(pattern = r"\s")]
                     _whitespace: (),
                 }
             }

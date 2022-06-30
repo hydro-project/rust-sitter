@@ -37,6 +37,10 @@ pub mod repetitions {
     #[derive(Debug)]
     #[allow(dead_code)]
     pub struct NumberList {
+        #[rust_sitter::delimited(
+            #[rust_sitter::leaf(text = ",")]
+            ()
+        )]
         numbers: Vec<Number>,
     }
 
@@ -158,6 +162,6 @@ mod tests {
     #[test]
     fn repetitions_grammar() {
         insta::assert_debug_snapshot!(repetitions::parse("1"));
-        insta::assert_debug_snapshot!(repetitions::parse("1 2"));
+        insta::assert_debug_snapshot!(repetitions::parse("1, 2"));
     }
 }
