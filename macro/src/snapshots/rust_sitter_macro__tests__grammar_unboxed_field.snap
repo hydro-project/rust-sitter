@@ -1,0 +1,76 @@
+---
+source: macro/src/lib.rs
+expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod grammar\n                            {\n                                #[rust_sitter :: language] pub struct Language\n                                { e : Expression, } pub enum Expression\n                                {\n                                    Number(#[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v : & str | v.parse ::\n                                    < i32 > ().unwrap())] i32),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
+---
+mod grammar {
+    pub struct Language {
+        e: Expression,
+    }
+    impl rust_sitter::Extract for Language {
+        #[allow(non_snake_case)]
+        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+            #[allow(non_snake_case)]
+            #[allow(clippy::unused_unit)]
+            fn extract_Language_e(node: tree_sitter::Node, source: &[u8]) -> Expression {
+                Expression::extract(node, source)
+            }
+            #[allow(non_snake_case)]
+            fn extract_Language(node: tree_sitter::Node, source: &[u8]) -> Language {
+                Language {
+                    e: extract_Language_e(node.child_by_field_name("e").unwrap(), source),
+                }
+            }
+            extract_Language(node, source)
+        }
+    }
+    pub enum Expression {
+        Number(i32),
+    }
+    impl rust_sitter::Extract for Expression {
+        #[allow(non_snake_case)]
+        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+            #[allow(non_snake_case)]
+            #[allow(clippy::unused_unit)]
+            fn extract_Expression_Number_0(node: tree_sitter::Node, source: &[u8]) -> i32 {
+                fn make_transform() -> impl Fn(&str) -> i32 {
+                    |v: &str| v.parse::<i32>().unwrap()
+                }
+                make_transform()(node.utf8_text(source).unwrap())
+            }
+            #[allow(non_snake_case)]
+            fn extract_Expression_Number(node: tree_sitter::Node, source: &[u8]) -> Expression {
+                Expression::Number(extract_Expression_Number_0(
+                    node.child_by_field_name("0").unwrap(),
+                    source,
+                ))
+            }
+            match node.child(0).unwrap().kind() {
+                "Expression_Number" => extract_Expression_Number(node.child(0).unwrap(), source),
+                _ => panic!(),
+            }
+        }
+    }
+    extern "C" {
+        fn tree_sitter_test() -> tree_sitter::Language;
+    }
+    fn language() -> tree_sitter::Language {
+        unsafe { tree_sitter_test() }
+    }
+    pub fn parse(
+        input: &str,
+    ) -> core::result::Result<Language, Vec<rust_sitter::errors::ParseError>> {
+        let mut parser = tree_sitter::Parser::new();
+        parser.set_language(language()).unwrap();
+        let tree = parser.parse(input, None).unwrap();
+        let root_node = tree.root_node();
+        if root_node.has_error() {
+            let mut errors = vec![];
+            rust_sitter::errors::collect_parsing_errors(&root_node, input.as_bytes(), &mut errors);
+            Err(errors)
+        } else {
+            use rust_sitter::Extract;
+            Ok(Language::extract(root_node, input.as_bytes()))
+        }
+    }
+}
+

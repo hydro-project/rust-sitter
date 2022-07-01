@@ -221,6 +221,11 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                     "content": field_rule
                 })
             }
+        } else if p.path.segments.len() == 1 {
+            json!({
+                "type": "SYMBOL",
+                "name": type_segment.ident.to_string(),
+            })
         } else {
             panic!("Unexpected leaf type");
         }
@@ -540,6 +545,32 @@ mod tests {
                 struct Whitespace {
                     #[rust_sitter::leaf(pattern = r"\s", transform = |_v| ())]
                     _whitespace: (),
+                }
+            }
+        } {
+            m
+        } else {
+            panic!()
+        };
+
+        insta::assert_display_snapshot!(generate_grammar(&m));
+    }
+
+    #[test]
+    fn grammar_unboxed_field() {
+        let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
+            mod grammar {
+                #[rust_sitter::language]
+                pub struct Language {
+                    e: Expression,
+                }
+
+                pub enum Expression {
+                    Number(
+                        #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
+                        i32
+                    ),
                 }
             }
         } {

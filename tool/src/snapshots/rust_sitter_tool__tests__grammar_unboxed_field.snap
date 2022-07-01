@@ -1,0 +1,5 @@
+---
+source: tool/src/lib.rs
+expression: generate_grammar(&m)
+---
+{"name":"test","rules":{"source_file":{"type":"SEQ","members":[{"type":"FIELD","name":"e","content":{"type":"SYMBOL","name":"Expression"}}]},"Language":{"type":"SEQ","members":[{"type":"FIELD","name":"e","content":{"type":"SYMBOL","name":"Expression"}}]},"Expression_Number_0":{"type":"PATTERN","value":"\\d+"},"Expression_Number":{"type":"SEQ","members":[{"type":"FIELD","name":"0","content":{"type":"SYMBOL","name":"Expression_Number_0"}}]},"Expression":{"type":"CHOICE","members":[{"type":"SYMBOL","name":"Expression_Number"}]}},"extras":[]}

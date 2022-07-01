@@ -122,6 +122,13 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
                                 .collect::<Vec<#leaf_type>>()
                         },
                     )
+                } else if p.path.segments.len() == 1 {
+                    (
+                        vec![],
+                        syn::parse_quote! {
+                            #leaf_type::extract(node, source)
+                        },
+                    )
                 } else {
                     panic!("Unexpected leaf type: {}", leaf_type.to_token_stream());
                 }
@@ -588,6 +595,30 @@ mod tests {
                     struct Whitespace {
                         #[rust_sitter::leaf(pattern = r"\s")]
                         _whitespace: (),
+                    }
+                }
+            })
+            .to_token_stream()
+            .to_string()
+        ));
+    }
+
+    #[test]
+    fn grammar_unboxed_field() {
+        insta::assert_display_snapshot!(rustfmt_code(
+            &expand_grammar(parse_quote! {
+                #[rust_sitter::grammar("test")]
+                mod grammar {
+                    #[rust_sitter::language]
+                    pub struct Language {
+                        e: Expression,
+                    }
+
+                    pub enum Expression {
+                        Number(
+                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
+                            i32
+                        ),
                     }
                 }
             })
