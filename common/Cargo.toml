@@ -1,6 +1,6 @@
 [package]
-name = "rust_sitter_macro"
-description = "Procedural macros for Rust Sitter"
+name = "rust_sitter_common"
+description = "Shared logic for the Rust Sitter macro and tool"
 version = "0.1.0"
 authors = ["Shadaj Laddad <shadaj@users.noreply.github.com>"]
 edition = "2021"
@@ -9,15 +9,8 @@ keywords = ["parsing", "codegen"]
 categories = ["development-tools"]
 
 [lib]
-proc-macro = true
 path = "src/lib.rs"
 
 [dependencies]
 syn = { version = "1.0", features = [ "full", "extra-traits" ] }
 quote = "1.0"
-proc-macro2 = "1.0.27"
-rust_sitter_common = { path = "../common" }
-
-[dev-dependencies]
-insta = "1.7.1"
-tempfile = "3.2.0"

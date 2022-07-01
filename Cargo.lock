@@ -491,6 +491,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust_sitter_common"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "rust_sitter_example"
 version = "0.1.0"
 dependencies = [
@@ -512,6 +520,7 @@ dependencies = [
  "insta",
  "proc-macro2",
  "quote",
+ "rust_sitter_common",
  "syn",
  "tempfile",
 ]
@@ -521,6 +530,7 @@ name = "rust_sitter_tool"
 version = "0.1.0"
 dependencies = [
  "insta",
+ "rust_sitter_common",
  "serde",
  "serde_json",
  "syn",

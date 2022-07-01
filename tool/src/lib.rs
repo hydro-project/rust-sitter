@@ -1,53 +1,7 @@
+use rust_sitter_common::*;
 use serde_json::{json, Map, Value};
 use std::path::Path;
-use syn::{
-    parse::{Parse, ParseStream},
-    punctuated::Punctuated,
-    *,
-};
-
-// TODO(shadaj): share with macro
-#[derive(Debug, Clone, PartialEq)]
-struct NameValueExpr {
-    pub path: Ident,
-    pub eq_token: Token![=],
-    pub expr: Expr,
-}
-
-impl Parse for NameValueExpr {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        Ok(NameValueExpr {
-            path: input.parse()?,
-            eq_token: input.parse()?,
-            expr: input.parse()?,
-        })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct FieldThenParams {
-    pub field: Field,
-    pub comma: Option<Token![,]>,
-    pub params: Punctuated<NameValueExpr, Token![,]>,
-}
-
-impl Parse for FieldThenParams {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let field = Field::parse_unnamed(input)?;
-        let comma: Option<Token![,]> = input.parse()?;
-        let params = if comma.is_some() {
-            input.parse_terminated(NameValueExpr::parse)?
-        } else {
-            Punctuated::new()
-        };
-
-        Ok(FieldThenParams {
-            field,
-            comma,
-            params,
-        })
-    }
-}
+use syn::{parse::Parse, punctuated::Punctuated, *};
 
 fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
     let leaf_type = leaf.ty;
@@ -74,26 +28,7 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
             .map(|p| p.expr.clone())
     });
 
-    let (inner_type, is_option) = if let Type::Path(p) = &leaf_type {
-        let type_segment = p.path.segments.first().unwrap();
-        if type_segment.ident == "Option" {
-            let leaf_type = if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
-                if let GenericArgument::Type(t) = p.args.first().unwrap().clone() {
-                    t
-                } else {
-                    panic!("Argument in angle brackets must be a type")
-                }
-            } else {
-                panic!("Expected angle bracketed path");
-            };
-
-            (leaf_type, true)
-        } else {
-            (leaf_type.clone(), false)
-        }
-    } else {
-        (leaf_type.clone(), false)
-    };
+    let (inner_type, is_option) = try_extract_inner_type(&leaf_type, "Option");
 
     if let Some(Expr::Lit(lit)) = pattern_param {
         if let Lit::Str(s) = &lit.lit {
@@ -129,24 +64,12 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
         } else {
             panic!("Expected string literal for text");
         }
-    } else if let Type::Path(p) = &inner_type {
-        let type_segment = p.path.segments.first().unwrap();
-        if type_segment.ident == "Vec" {
+    } else {
+        let (vec_type, is_vec) = try_extract_inner_type(&inner_type, "Vec");
+        if is_vec {
             if is_option {
                 panic!("Option<Vec> is not supported");
             }
-
-            let leaf_type = if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
-                p.args.first().unwrap().clone()
-            } else {
-                panic!("Expected angle bracketed path");
-            };
-
-            let leaf_type = if let GenericArgument::Type(Type::Path(t)) = leaf_type {
-                t
-            } else {
-                panic!("Expected type");
-            };
 
             let delimited_attr = leaf
                 .attrs
@@ -178,14 +101,22 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                 .map(|e| e == syn::parse_quote!(true))
                 .unwrap_or(false);
 
-            let field_rule = json!({
-                "type": "FIELD",
-                "name": leaf.ident.unwrap().to_string(),
-                "content": {
-                    "type": "SYMBOL",
-                    "name": leaf_type.path.segments.first().unwrap().ident.to_string(),
+            let field_rule = if let Type::Path(p) = &vec_type {
+                if p.path.segments.len() == 1 {
+                    json!({
+                        "type": "FIELD",
+                        "name": leaf.ident.unwrap().to_string(),
+                        "content": {
+                            "type": "SYMBOL",
+                            "name": p.path.segments.first().unwrap().ident.to_string(),
+                        }
+                    })
+                } else {
+                    panic!("Unexpected leaf type");
                 }
-            });
+            } else {
+                panic!("Unexpected leaf type");
+            };
 
             if let Some(delimiter_json) = delimiter_json {
                 let non_empty = json!({
@@ -230,23 +161,7 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                 })
             }
         } else {
-            let (inner_type, _) = if type_segment.ident == "Box" {
-                let inner_type = if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
-                    if let GenericArgument::Type(t) = p.args.first().unwrap().clone() {
-                        t
-                    } else {
-                        panic!("Argument in angle brackets must be a type")
-                    }
-                } else {
-                    panic!("Expected angle bracketed path");
-                };
-
-                (inner_type, true)
-            } else if p.path.segments.len() == 1 {
-                (inner_type.clone(), false)
-            } else {
-                panic!("Unexpected leaf type");
-            };
+            let (inner_type, _) = try_extract_inner_type(&inner_type, "Box");
 
             if let Type::Path(p) = &inner_type {
                 if p.path.segments.len() == 1 {
@@ -261,8 +176,6 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                 panic!("Unexpected leaf type");
             }
         }
-    } else {
-        panic!("Unexpected leaf type");
     }
 }
 
@@ -282,19 +195,8 @@ fn gen_struct_or_variant(
                 .map(|v| v.to_string())
                 .unwrap_or(format!("{}", i));
 
-            let is_vec = if let Type::Path(p) = &field.ty {
-                let type_segment = p.path.segments.first().unwrap();
-                type_segment.ident == "Vec"
-            } else {
-                false
-            };
-
-            let is_option = if let Type::Path(p) = &field.ty {
-                let type_segment = p.path.segments.first().unwrap();
-                type_segment.ident == "Option"
-            } else {
-                false
-            };
+            let (_, is_option) = try_extract_inner_type(&field.ty, "Option");
+            let (_, is_vec) = try_extract_inner_type(&field.ty, "Vec");
 
             let field_contents = gen_field(
                 format!("{}_{}", path.clone(), ident_str),

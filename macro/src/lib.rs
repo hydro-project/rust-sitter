@@ -1,31 +1,11 @@
 use proc_macro2::Span;
 use quote::ToTokens;
-use syn::{
-    parse::{Parse, ParseStream},
-    punctuated::Punctuated,
-    *,
-};
+use rust_sitter_common::*;
+use syn::{parse::Parse, punctuated::Punctuated, *};
 
 fn is_sitter_attr(attr: &Attribute) -> bool {
     let ident = &attr.path.segments.iter().next().unwrap().ident;
     ident == "rust_sitter"
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct NameValueExpr {
-    pub path: Ident,
-    pub eq_token: Token![=],
-    pub expr: Expr,
-}
-
-impl Parse for NameValueExpr {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        Ok(NameValueExpr {
-            path: input.parse()?,
-            eq_token: input.parse()?,
-            expr: input.parse()?,
-        })
-    }
 }
 
 enum ParamOrField {
@@ -66,26 +46,7 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
             .map(|p| p.expr.clone())
     });
 
-    let (inner_type, is_option) = if let Type::Path(p) = &leaf_type {
-        let type_segment = p.path.segments.first().unwrap();
-        if type_segment.ident == "Option" {
-            let leaf_type = if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
-                if let GenericArgument::Type(t) = p.args.first().unwrap().clone() {
-                    t
-                } else {
-                    panic!("Argument in angle brackets must be a type")
-                }
-            } else {
-                panic!("Expected angle bracketed path");
-            };
-
-            (leaf_type, true)
-        } else {
-            (leaf_type.clone(), false)
-        }
-    } else {
-        (leaf_type.clone(), false)
-    };
+    let (inner_type, is_option) = try_extract_inner_type(&leaf_type, "Option");
 
     let (leaf_stmts, leaf_expr): (Vec<Stmt>, Expr) = match transform_param {
         Some(closure) => (
@@ -118,19 +79,12 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
                         }
                     },
                 )
-            } else if let Type::Path(p) = &inner_type {
-                let type_segment = p.path.segments.first().unwrap();
-                if type_segment.ident == "Vec" {
+            } else {
+                let (vec_type, is_vec) = try_extract_inner_type(&inner_type, "Vec");
+                if is_vec {
                     if is_option {
                         panic!("Option<Vec> is not supported");
                     }
-
-                    let inner_type =
-                        if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
-                            p.args.first().unwrap().clone()
-                        } else {
-                            panic!("Expected angle bracketed path");
-                        };
 
                     let field_name = leaf.ident.unwrap().to_string();
 
@@ -146,29 +100,12 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
                         syn::parse_quote! {
                             node
                                 .children_by_field_name(#field_name, &mut cursor)
-                                .map(|n| #inner_type::extract(n, source))
-                                .collect::<Vec<#inner_type>>()
+                                .map(|n| #vec_type::extract(n, source))
+                                .collect::<Vec<#vec_type>>()
                         },
                     )
                 } else {
-                    let (inner_type, is_box) = if type_segment.ident == "Box" {
-                        let inner_type =
-                            if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
-                                if let GenericArgument::Type(t) = p.args.first().unwrap().clone() {
-                                    t
-                                } else {
-                                    panic!("Argument in angle brackets must be a type")
-                                }
-                            } else {
-                                panic!("Expected angle bracketed path");
-                            };
-
-                        (inner_type, true)
-                    } else if p.path.segments.len() == 1 {
-                        (inner_type.clone(), false)
-                    } else {
-                        panic!("Unexpected leaf type: {}", inner_type.to_token_stream());
-                    };
+                    let (inner_type, is_box) = try_extract_inner_type(&inner_type, "Box");
 
                     let extracted_inner: Expr = if is_option {
                         syn::parse_quote!(node.map(|n| #inner_type::extract(n, source)))
@@ -192,8 +129,6 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
                         )
                     }
                 }
-            } else {
-                panic!("Unexpected leaf type");
             }
         }
     };
@@ -244,12 +179,7 @@ fn gen_struct_or_variant(
                 Span::call_site(),
             );
 
-            let is_vec = if let Type::Path(p) = &field.ty {
-                let type_segment = p.path.segments.first().unwrap();
-                type_segment.ident == "Vec"
-            } else {
-                false
-            };
+            let (_, is_vec) = try_extract_inner_type(&field.ty, "Vec");
 
             let expr = if is_vec {
                 syn::parse_quote! {
