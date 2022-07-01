@@ -57,7 +57,11 @@ pub mod errors {
                         end: node.end_byte(),
                     })
                 } else {
-                    panic!("Unknown error type: {}", sexp);
+                    errors.push(ParseError {
+                        reason: ParseErrorReason::FailedNode(vec![]),
+                        start: node.start_byte(),
+                        end: node.end_byte(),
+                    })
                 }
             }
         } else if node.is_missing() {

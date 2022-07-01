@@ -1,12 +1,15 @@
 ---
 source: example/src/main.rs
-expression: "repetitions::parse(\"1\")"
+expression: "repetitions::parse(\"1, 2\")"
 ---
 Ok(
     NumberList {
         numbers: [
             Number {
                 v: 1,
+            },
+            Number {
+                v: 2,
             },
         ],
     },

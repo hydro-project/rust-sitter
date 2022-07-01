@@ -24,6 +24,31 @@ impl Parse for NameValueExpr {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+struct FieldThenParams {
+    pub field: Field,
+    pub comma: Option<Token![,]>,
+    pub params: Punctuated<NameValueExpr, Token![,]>,
+}
+
+impl Parse for FieldThenParams {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let field = Field::parse_unnamed(input)?;
+        let comma: Option<Token![,]> = input.parse()?;
+        let params = if comma.is_some() {
+            input.parse_terminated(NameValueExpr::parse)?
+        } else {
+            Punctuated::new()
+        };
+
+        Ok(FieldThenParams {
+            field,
+            comma,
+            params,
+        })
+    }
+}
+
 fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
     let leaf_type = leaf.ty;
 
@@ -121,10 +146,29 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                 .find(|attr| attr.path == syn::parse_quote!(rust_sitter::delimited));
 
             let delimited_params =
-                delimited_attr.and_then(|a| a.parse_args_with(Field::parse_unnamed).ok());
+                delimited_attr.and_then(|a| a.parse_args_with(FieldThenParams::parse).ok());
 
-            let delimiter_json =
-                delimited_params.map(|p| gen_field(format!("{}_{}", path, "delimiter"), p, out));
+            let delimiter_json = delimited_params
+                .map(|p| gen_field(format!("{}_{}", path, "delimiter"), p.field, out));
+
+            let repeat_attr = leaf
+                .attrs
+                .iter()
+                .find(|attr| attr.path == syn::parse_quote!(rust_sitter::repeat));
+
+            let repeat_params = repeat_attr.and_then(|a| {
+                a.parse_args_with(Punctuated::<NameValueExpr, Token![,]>::parse_terminated)
+                    .ok()
+            });
+
+            let repeat_non_empty = repeat_params
+                .and_then(|p| {
+                    p.iter()
+                        .find(|param| param.path == "non_empty")
+                        .map(|p| p.expr.clone())
+                })
+                .map(|e| e == syn::parse_quote!(true))
+                .unwrap_or(false);
 
             let field_rule = json!({
                 "type": "FIELD",
@@ -136,34 +180,44 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
             });
 
             if let Some(delimiter_json) = delimiter_json {
-                json!({
-                    "type": "CHOICE",
+                let non_empty = json!({
+                    "type": "SEQ",
                     "members": [
-                        // optional
+                        field_rule,
                         {
-                            "type": "BLANK"
-                        },
-                        {
-                            "type": "SEQ",
-                            "members": [
-                                field_rule,
-                                {
-                                    "type": "REPEAT",
-                                    "content": {
-                                        "type": "SEQ",
-                                        "members": [
-                                            delimiter_json,
-                                            field_rule,
-                                        ]
-                                    }
-                                }
-                            ]
+                            "type": "REPEAT",
+                            "content": {
+                                "type": "SEQ",
+                                "members": [
+                                    delimiter_json,
+                                    field_rule,
+                                ]
+                            }
                         }
                     ]
-                })
+                });
+
+                if repeat_non_empty {
+                    non_empty
+                } else {
+                    json!({
+                        "type": "CHOICE",
+                        "members": [
+                            // optional
+                            {
+                                "type": "BLANK"
+                            },
+                            non_empty
+                        ]
+                    })
+                }
             } else {
                 json!({
-                    "type": "REPEAT",
+                    "type": if repeat_non_empty {
+                        "REPEAT1"
+                    } else {
+                        "REPEAT"
+                    },
                     "content": field_rule
                 })
             }
@@ -504,6 +558,41 @@ mod tests {
             pub mod grammar {
                 #[rust_sitter::language]
                 pub struct NumberList {
+                    #[rust_sitter::delimited(
+                        #[rust_sitter::leaf(text = ",")]
+                        ()
+                    )]
+                    numbers: Vec<Number>,
+                }
+
+                pub struct Number {
+                    #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+                    v: i32,
+                }
+
+                #[rust_sitter::extra]
+                struct Whitespace {
+                    #[rust_sitter::leaf(pattern = r"\s")]
+                    _whitespace: (),
+                }
+            }
+        } {
+            m
+        } else {
+            panic!()
+        };
+
+        insta::assert_display_snapshot!(generate_grammar(&m));
+    }
+
+    #[test]
+    fn grammar_repeat1() {
+        let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
+            pub mod grammar {
+                #[rust_sitter::language]
+                pub struct NumberList {
+                    #[rust_sitter::repeat(non_empty = true)]
                     #[rust_sitter::delimited(
                         #[rust_sitter::leaf(text = ",")]
                         ()
