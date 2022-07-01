@@ -1,0 +1,16 @@
+---
+source: example/src/optionals.rs
+expression: "grammar::parse(\"_2\")"
+---
+Ok(
+    Language {
+        v: None,
+        _s: (),
+        t: Some(
+            Number {
+                v: 2,
+            },
+        ),
+        _d: None,
+    },
+)

@@ -5,6 +5,7 @@ use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level, SpanLabel, Spa
 use rust_sitter::errors::{ParseError, ParseErrorReason};
 
 mod arithmetic;
+mod optionals;
 mod repetitions;
 
 fn convert_parse_error_to_diagnostics(

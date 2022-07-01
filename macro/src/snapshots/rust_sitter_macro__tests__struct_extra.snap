@@ -11,16 +11,16 @@ mod grammar {
         fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
-            fn extract_Expression_Number_0(node: tree_sitter::Node, source: &[u8]) -> i32 {
+            fn extract_Expression_Number_0(node: Option<tree_sitter::Node>, source: &[u8]) -> i32 {
                 fn make_transform() -> impl Fn(&str) -> i32 {
                     |v| v.parse().unwrap()
                 }
-                make_transform()(node.utf8_text(source).unwrap())
+                make_transform()(node.and_then(|n| n.utf8_text(source).ok()).unwrap())
             }
             #[allow(non_snake_case)]
             fn extract_Expression_Number(node: tree_sitter::Node, source: &[u8]) -> Expression {
                 Expression::Number(extract_Expression_Number_0(
-                    node.child_by_field_name("0").unwrap(),
+                    node.child_by_field_name("0"),
                     source,
                 ))
             }
@@ -38,14 +38,17 @@ mod grammar {
         fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
-            fn extract_Whitespace__whitespace(node: tree_sitter::Node, source: &[u8]) -> () {
+            fn extract_Whitespace__whitespace(
+                node: Option<tree_sitter::Node>,
+                source: &[u8],
+            ) -> () {
                 ()
             }
             #[allow(non_snake_case)]
             fn extract_Whitespace(node: tree_sitter::Node, source: &[u8]) -> Whitespace {
                 Whitespace {
                     _whitespace: extract_Whitespace__whitespace(
-                        node.child_by_field_name("_whitespace").unwrap(),
+                        node.child_by_field_name("_whitespace"),
                         source,
                     ),
                 }

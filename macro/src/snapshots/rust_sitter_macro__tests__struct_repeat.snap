@@ -11,7 +11,11 @@ mod grammar {
         fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
-            fn extract_NumberList_numbers(node: tree_sitter::Node, source: &[u8]) -> Vec<Number> {
+            fn extract_NumberList_numbers(
+                node: Option<tree_sitter::Node>,
+                source: &[u8],
+            ) -> Vec<Number> {
+                let node = node.unwrap();
                 let mut cursor = node.walk();
                 node.children_by_field_name("numbers", &mut cursor)
                     .map(|n| Number::extract(n, source))
@@ -20,7 +24,7 @@ mod grammar {
             #[allow(non_snake_case)]
             fn extract_NumberList(node: tree_sitter::Node, source: &[u8]) -> NumberList {
                 NumberList {
-                    numbers: extract_NumberList_numbers(node, source),
+                    numbers: extract_NumberList_numbers(Some(node), source),
                 }
             }
             extract_NumberList(node, source)
@@ -34,16 +38,16 @@ mod grammar {
         fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
-            fn extract_Number_v(node: tree_sitter::Node, source: &[u8]) -> i32 {
+            fn extract_Number_v(node: Option<tree_sitter::Node>, source: &[u8]) -> i32 {
                 fn make_transform() -> impl Fn(&str) -> i32 {
                     |v| v.parse().unwrap()
                 }
-                make_transform()(node.utf8_text(source).unwrap())
+                make_transform()(node.and_then(|n| n.utf8_text(source).ok()).unwrap())
             }
             #[allow(non_snake_case)]
             fn extract_Number(node: tree_sitter::Node, source: &[u8]) -> Number {
                 Number {
-                    v: extract_Number_v(node.child_by_field_name("v").unwrap(), source),
+                    v: extract_Number_v(node.child_by_field_name("v"), source),
                 }
             }
             extract_Number(node, source)
@@ -57,14 +61,17 @@ mod grammar {
         fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
-            fn extract_Whitespace__whitespace(node: tree_sitter::Node, source: &[u8]) -> () {
+            fn extract_Whitespace__whitespace(
+                node: Option<tree_sitter::Node>,
+                source: &[u8],
+            ) -> () {
                 ()
             }
             #[allow(non_snake_case)]
             fn extract_Whitespace(node: tree_sitter::Node, source: &[u8]) -> Whitespace {
                 Whitespace {
                     _whitespace: extract_Whitespace__whitespace(
-                        node.child_by_field_name("_whitespace").unwrap(),
+                        node.child_by_field_name("_whitespace"),
                         source,
                     ),
                 }

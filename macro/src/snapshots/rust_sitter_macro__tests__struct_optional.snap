@@ -1,0 +1,86 @@
+---
+source: macro/src/lib.rs
+expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod grammar\n                            {\n                                #[rust_sitter :: language] pub struct Language\n                                {\n                                    #[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] v : Option < i32 >, t : Option < Number\n                                    >,\n                                } pub struct Number\n                                {\n                                    #[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] v : i32\n                                }\n                            }\n                        }).to_token_stream().to_string())"
+---
+mod grammar {
+    pub struct Language {
+        v: Option<i32>,
+        t: Option<Number>,
+    }
+    impl rust_sitter::Extract for Language {
+        #[allow(non_snake_case)]
+        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+            #[allow(non_snake_case)]
+            #[allow(clippy::unused_unit)]
+            fn extract_Language_v(node: Option<tree_sitter::Node>, source: &[u8]) -> Option<i32> {
+                fn make_transform() -> impl Fn(&str) -> i32 {
+                    |v| v.parse().unwrap()
+                }
+                node.and_then(|n| n.utf8_text(source).ok())
+                    .map(|t| make_transform()(t))
+            }
+            #[allow(non_snake_case)]
+            #[allow(clippy::unused_unit)]
+            fn extract_Language_t(
+                node: Option<tree_sitter::Node>,
+                source: &[u8],
+            ) -> Option<Number> {
+                node.map(|n| Number::extract(n, source))
+            }
+            #[allow(non_snake_case)]
+            fn extract_Language(node: tree_sitter::Node, source: &[u8]) -> Language {
+                Language {
+                    v: extract_Language_v(node.child_by_field_name("v"), source),
+                    t: extract_Language_t(node.child_by_field_name("t"), source),
+                }
+            }
+            extract_Language(node, source)
+        }
+    }
+    pub struct Number {
+        v: i32,
+    }
+    impl rust_sitter::Extract for Number {
+        #[allow(non_snake_case)]
+        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+            #[allow(non_snake_case)]
+            #[allow(clippy::unused_unit)]
+            fn extract_Number_v(node: Option<tree_sitter::Node>, source: &[u8]) -> i32 {
+                fn make_transform() -> impl Fn(&str) -> i32 {
+                    |v| v.parse().unwrap()
+                }
+                make_transform()(node.and_then(|n| n.utf8_text(source).ok()).unwrap())
+            }
+            #[allow(non_snake_case)]
+            fn extract_Number(node: tree_sitter::Node, source: &[u8]) -> Number {
+                Number {
+                    v: extract_Number_v(node.child_by_field_name("v"), source),
+                }
+            }
+            extract_Number(node, source)
+        }
+    }
+    extern "C" {
+        fn tree_sitter_test() -> tree_sitter::Language;
+    }
+    fn language() -> tree_sitter::Language {
+        unsafe { tree_sitter_test() }
+    }
+    pub fn parse(
+        input: &str,
+    ) -> core::result::Result<Language, Vec<rust_sitter::errors::ParseError>> {
+        let mut parser = tree_sitter::Parser::new();
+        parser.set_language(language()).unwrap();
+        let tree = parser.parse(input, None).unwrap();
+        let root_node = tree.root_node();
+        if root_node.has_error() {
+            let mut errors = vec![];
+            rust_sitter::errors::collect_parsing_errors(&root_node, input.as_bytes(), &mut errors);
+            Err(errors)
+        } else {
+            use rust_sitter::Extract;
+            Ok(Language::extract(root_node, input.as_bytes()))
+        }
+    }
+}
+

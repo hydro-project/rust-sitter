@@ -1,0 +1,16 @@
+---
+source: example/src/optionals.rs
+expression: "grammar::parse(\"1_.\")"
+---
+Ok(
+    Language {
+        v: Some(
+            1,
+        ),
+        _s: (),
+        t: None,
+        _d: Some(
+            (),
+        ),
+    },
+)

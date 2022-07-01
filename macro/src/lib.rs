@@ -47,7 +47,7 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
     let leaf_type = leaf.ty;
 
     let leaf_text_expr: Expr = syn::parse_quote! {
-        node.utf8_text(source).unwrap()
+        node.and_then(|n| n.utf8_text(source).ok())
     };
 
     let leaf_attr = leaf
@@ -66,43 +66,66 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
             .map(|p| p.expr.clone())
     });
 
+    let (inner_type, is_option) = if let Type::Path(p) = &leaf_type {
+        let type_segment = p.path.segments.first().unwrap();
+        if type_segment.ident == "Option" {
+            let leaf_type = if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
+                if let GenericArgument::Type(t) = p.args.first().unwrap().clone() {
+                    t
+                } else {
+                    panic!("Argument in angle brackets must be a type")
+                }
+            } else {
+                panic!("Expected angle bracketed path");
+            };
+
+            (leaf_type, true)
+        } else {
+            (leaf_type.clone(), false)
+        }
+    } else {
+        (leaf_type.clone(), false)
+    };
+
     let (leaf_stmts, leaf_expr): (Vec<Stmt>, Expr) = match transform_param {
         Some(closure) => (
             vec![syn::parse_quote! {
-                fn make_transform() -> impl Fn(&str) -> #leaf_type {
+                fn make_transform() -> impl Fn(&str) -> #inner_type {
                     #closure
                 }
             }],
-            syn::parse_quote! {
-                make_transform()(#leaf_text_expr)
+            if is_option {
+                syn::parse_quote! {
+                    #leaf_text_expr.map(|t| make_transform()(t))
+                }
+            } else {
+                syn::parse_quote! {
+                    make_transform()(#leaf_text_expr.unwrap())
+                }
             },
         ),
         None => {
-            if leaf_type == syn::parse_quote!(()) {
+            if inner_type == syn::parse_quote!(()) {
                 (
                     vec![],
-                    syn::parse_quote! {
-                        ()
+                    if is_option {
+                        syn::parse_quote! {
+                            node.map(|_n| ())
+                        }
+                    } else {
+                        syn::parse_quote! {
+                            ()
+                        }
                     },
                 )
-            } else if let Type::Path(p) = &leaf_type {
+            } else if let Type::Path(p) = &inner_type {
                 let type_segment = p.path.segments.first().unwrap();
-                if type_segment.ident == "Box" {
-                    let leaf_type =
-                        if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
-                            p.args.first().unwrap().clone()
-                        } else {
-                            panic!("Expected angle bracketed path");
-                        };
+                if type_segment.ident == "Vec" {
+                    if is_option {
+                        panic!("Option<Vec> is not supported");
+                    }
 
-                    (
-                        vec![],
-                        syn::parse_quote! {
-                            Box::new(#leaf_type::extract(node, source))
-                        },
-                    )
-                } else if type_segment.ident == "Vec" {
-                    let leaf_type =
+                    let inner_type =
                         if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
                             p.args.first().unwrap().clone()
                         } else {
@@ -112,25 +135,62 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
                     let field_name = leaf.ident.unwrap().to_string();
 
                     (
-                        vec![syn::parse_quote! {
-                            let mut cursor = node.walk();
-                        }],
+                        vec![
+                            syn::parse_quote! {
+                                let node = node.unwrap();
+                            },
+                            syn::parse_quote! {
+                                let mut cursor = node.walk();
+                            },
+                        ],
                         syn::parse_quote! {
                             node
                                 .children_by_field_name(#field_name, &mut cursor)
-                                .map(|n| #leaf_type::extract(n, source))
-                                .collect::<Vec<#leaf_type>>()
-                        },
-                    )
-                } else if p.path.segments.len() == 1 {
-                    (
-                        vec![],
-                        syn::parse_quote! {
-                            #leaf_type::extract(node, source)
+                                .map(|n| #inner_type::extract(n, source))
+                                .collect::<Vec<#inner_type>>()
                         },
                     )
                 } else {
-                    panic!("Unexpected leaf type: {}", leaf_type.to_token_stream());
+                    let (inner_type, is_box) = if type_segment.ident == "Box" {
+                        let inner_type =
+                            if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
+                                if let GenericArgument::Type(t) = p.args.first().unwrap().clone() {
+                                    t
+                                } else {
+                                    panic!("Argument in angle brackets must be a type")
+                                }
+                            } else {
+                                panic!("Expected angle bracketed path");
+                            };
+
+                        (inner_type, true)
+                    } else if p.path.segments.len() == 1 {
+                        (inner_type.clone(), false)
+                    } else {
+                        panic!("Unexpected leaf type: {}", inner_type.to_token_stream());
+                    };
+
+                    let extracted_inner: Expr = if is_option {
+                        syn::parse_quote!(node.map(|n| #inner_type::extract(n, source)))
+                    } else {
+                        syn::parse_quote!(#inner_type::extract(node.unwrap(), source))
+                    };
+
+                    if is_box {
+                        (
+                            vec![],
+                            syn::parse_quote! {
+                                Box::new(#extracted_inner)
+                            },
+                        )
+                    } else {
+                        (
+                            vec![],
+                            syn::parse_quote! {
+                                #extracted_inner
+                            },
+                        )
+                    }
                 }
             } else {
                 panic!("Unexpected leaf type");
@@ -141,7 +201,7 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
     out.push(syn::parse_quote! {
         #[allow(non_snake_case)]
         #[allow(clippy::unused_unit)]
-        fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> #leaf_type {
+        fn #extract_ident(node: Option<tree_sitter::Node>, source: &[u8]) -> #leaf_type {
             #(#leaf_stmts)*
             #leaf_expr
         }
@@ -193,11 +253,11 @@ fn gen_struct_or_variant(
 
             let expr = if is_vec {
                 syn::parse_quote! {
-                    #ident(node, source)
+                    #ident(Some(node), source)
                 }
             } else {
                 syn::parse_quote! {
-                    #ident(node.child_by_field_name(#ident_str).unwrap(), source)
+                    #ident(node.child_by_field_name(#ident_str), source)
                 }
             };
 
@@ -647,6 +707,30 @@ mod tests {
                     struct Whitespace {
                         #[rust_sitter::leaf(pattern = r"\s")]
                         _whitespace: (),
+                    }
+                }
+            })
+            .to_token_stream()
+            .to_string()
+        ));
+    }
+
+    #[test]
+    fn struct_optional() {
+        insta::assert_display_snapshot!(rustfmt_code(
+            &expand_grammar(parse_quote! {
+                #[rust_sitter::grammar("test")]
+                mod grammar {
+                    #[rust_sitter::language]
+                    pub struct Language {
+                        #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+                        v: Option<i32>,
+                        t: Option<Number>,
+                    }
+
+                    pub struct Number {
+                        #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+                        v: i32
                     }
                 }
             })

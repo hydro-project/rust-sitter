@@ -74,6 +74,27 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
             .map(|p| p.expr.clone())
     });
 
+    let (inner_type, is_option) = if let Type::Path(p) = &leaf_type {
+        let type_segment = p.path.segments.first().unwrap();
+        if type_segment.ident == "Option" {
+            let leaf_type = if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
+                if let GenericArgument::Type(t) = p.args.first().unwrap().clone() {
+                    t
+                } else {
+                    panic!("Argument in angle brackets must be a type")
+                }
+            } else {
+                panic!("Expected angle bracketed path");
+            };
+
+            (leaf_type, true)
+        } else {
+            (leaf_type.clone(), false)
+        }
+    } else {
+        (leaf_type.clone(), false)
+    };
+
     if let Some(Expr::Lit(lit)) = pattern_param {
         if let Lit::Str(s) = &lit.lit {
             out.insert(
@@ -108,26 +129,13 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
         } else {
             panic!("Expected string literal for text");
         }
-    } else if let Type::Path(p) = &leaf_type {
+    } else if let Type::Path(p) = &inner_type {
         let type_segment = p.path.segments.first().unwrap();
-        if type_segment.ident == "Box" {
-            let leaf_type = if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
-                p.args.first().unwrap().clone()
-            } else {
-                panic!("Expected angle bracketed path");
-            };
+        if type_segment.ident == "Vec" {
+            if is_option {
+                panic!("Option<Vec> is not supported");
+            }
 
-            let leaf_type = if let GenericArgument::Type(Type::Path(t)) = leaf_type {
-                t
-            } else {
-                panic!("Expected type");
-            };
-
-            json!({
-                "type": "SYMBOL",
-                "name": leaf_type.path.segments.first().unwrap().ident.to_string(),
-            })
-        } else if type_segment.ident == "Vec" {
             let leaf_type = if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
                 p.args.first().unwrap().clone()
             } else {
@@ -221,13 +229,37 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                     "content": field_rule
                 })
             }
-        } else if p.path.segments.len() == 1 {
-            json!({
-                "type": "SYMBOL",
-                "name": type_segment.ident.to_string(),
-            })
         } else {
-            panic!("Unexpected leaf type");
+            let (inner_type, _) = if type_segment.ident == "Box" {
+                let inner_type = if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
+                    if let GenericArgument::Type(t) = p.args.first().unwrap().clone() {
+                        t
+                    } else {
+                        panic!("Argument in angle brackets must be a type")
+                    }
+                } else {
+                    panic!("Expected angle bracketed path");
+                };
+
+                (inner_type, true)
+            } else if p.path.segments.len() == 1 {
+                (inner_type.clone(), false)
+            } else {
+                panic!("Unexpected leaf type");
+            };
+
+            if let Type::Path(p) = &inner_type {
+                if p.path.segments.len() == 1 {
+                    json!({
+                        "type": "SYMBOL",
+                        "name": p.path.segments.first().unwrap().ident.to_string(),
+                    })
+                } else {
+                    panic!("Unexpected leaf type");
+                }
+            } else {
+                panic!("Unexpected leaf type");
+            }
         }
     } else {
         panic!("Unexpected leaf type");
@@ -257,6 +289,13 @@ fn gen_struct_or_variant(
                 false
             };
 
+            let is_option = if let Type::Path(p) = &field.ty {
+                let type_segment = p.path.segments.first().unwrap();
+                type_segment.ident == "Option"
+            } else {
+                false
+            };
+
             let field_contents = gen_field(
                 format!("{}_{}", path.clone(), ident_str),
                 field.clone(),
@@ -266,11 +305,25 @@ fn gen_struct_or_variant(
             if is_vec {
                 field_contents
             } else {
-                json!({
+                let core = json!({
                     "type": "FIELD",
                     "name": ident_str,
                     "content": field_contents
-                })
+                });
+
+                if is_option {
+                    json!({
+                        "type": "CHOICE",
+                        "members": [
+                            {
+                                "type": "BLANK"
+                            },
+                            core
+                        ]
+                    })
+                } else {
+                    core
+                }
             }
         })
         .collect::<Vec<Value>>();
@@ -640,6 +693,32 @@ mod tests {
                 struct Whitespace {
                     #[rust_sitter::leaf(pattern = r"\s")]
                     _whitespace: (),
+                }
+            }
+        } {
+            m
+        } else {
+            panic!()
+        };
+
+        insta::assert_display_snapshot!(generate_grammar(&m));
+    }
+
+    #[test]
+    fn struct_optional() {
+        let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
+            mod grammar {
+                #[rust_sitter::language]
+                pub struct Language {
+                    #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+                    v: Option<i32>,
+                    t: Option<Number>,
+                }
+
+                pub struct Number {
+                    #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+                    v: i32
                 }
             }
         } {
