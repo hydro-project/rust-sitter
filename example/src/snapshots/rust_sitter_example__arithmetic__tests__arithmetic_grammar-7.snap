@@ -1,6 +1,6 @@
 ---
-source: example/src/main.rs
-expression: "arithmetic_grammar::parse(\"1 + 2\")"
+source: example/src/arithmetic.rs
+expression: "grammar::parse(\"1 + 2\")"
 ---
 Err(
     [

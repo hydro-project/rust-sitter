@@ -1,10 +1,10 @@
 ---
-source: example/src/main.rs
-expression: "arithmetic_grammar::parse(\"1 - 2 - 3\")"
+source: example/src/arithmetic.rs
+expression: "grammar::parse(\"1 * 2 - 3\")"
 ---
 Ok(
     Sub(
-        Sub(
+        Mul(
             Number(
                 1,
             ),

@@ -4,60 +4,8 @@ use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level, SpanLabel, SpanStyle};
 use rust_sitter::errors::{ParseError, ParseErrorReason};
 
-#[rust_sitter::grammar("simple_math")]
-pub mod arithmetic_grammar {
-    #[rust_sitter::language]
-    #[derive(Debug)]
-    pub enum Expression {
-        Number(#[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())] i32),
-        #[rust_sitter::prec_left(1)]
-        Sub(
-            Box<Expression>,
-            #[rust_sitter::leaf(text = "-")] (),
-            Box<Expression>,
-        ),
-        #[rust_sitter::prec_left(2)]
-        Mul(
-            Box<Expression>,
-            #[rust_sitter::leaf(text = "*")] (),
-            Box<Expression>,
-        ),
-    }
-
-    #[rust_sitter::extra]
-    struct Whitespace {
-        #[rust_sitter::leaf(pattern = r"\s")]
-        _whitespace: (),
-    }
-}
-
-#[rust_sitter::grammar("repetitions")]
-pub mod repetitions {
-    #[rust_sitter::language]
-    #[derive(Debug)]
-    #[allow(dead_code)]
-    pub struct NumberList {
-        #[rust_sitter::repeat(non_empty = true)]
-        #[rust_sitter::delimited(
-            #[rust_sitter::leaf(text = ",")]
-            ()
-        )]
-        numbers: Vec<Number>,
-    }
-
-    #[derive(Debug)]
-    #[allow(dead_code)]
-    pub struct Number {
-        #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
-        v: i32,
-    }
-
-    #[rust_sitter::extra]
-    struct Whitespace {
-        #[rust_sitter::leaf(pattern = r"\s")]
-        _whitespace: (),
-    }
-}
+mod arithmetic;
+mod repetitions;
 
 fn convert_parse_error_to_diagnostics(
     file_span: &codemap::Span,
@@ -122,7 +70,7 @@ fn main() {
             break;
         }
 
-        match arithmetic_grammar::parse(input) {
+        match arithmetic::grammar::parse(input) {
             Ok(expr) => println!("{:?}", expr),
             Err(errs) => {
                 let mut codemap = CodeMap::new();
@@ -136,34 +84,5 @@ fn main() {
                 emitter.emit(&diagnostics);
             }
         };
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn arithmetic_grammar() {
-        // successful parses
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1"));
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1 - 2"));
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1 - 2 - 3"));
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1 - 2 * 3"));
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1 * 2 * 3"));
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1 * 2 - 3"));
-
-        // failed parses
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1 + 2"));
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1 - 2 -"));
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("a1"));
-        insta::assert_debug_snapshot!(arithmetic_grammar::parse("1a"));
-    }
-
-    #[test]
-    fn repetitions_grammar() {
-        insta::assert_debug_snapshot!(repetitions::parse(""));
-        insta::assert_debug_snapshot!(repetitions::parse("1"));
-        insta::assert_debug_snapshot!(repetitions::parse("1, 2"));
     }
 }

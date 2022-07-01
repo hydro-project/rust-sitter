@@ -1,6 +1,6 @@
 ---
-source: example/src/main.rs
-expression: "repetitions::parse(\"\")"
+source: example/src/repetitions.rs
+expression: "grammar::parse(\"\")"
 ---
 Err(
     [
