@@ -502,15 +502,12 @@ dependencies = [
 name = "rust_sitter_example"
 version = "0.1.0"
 dependencies = [
- "cc",
  "codemap",
  "codemap-diagnostic",
  "insta",
  "rust_sitter",
  "rust_sitter_tool",
- "tempdir",
  "tree-sitter",
- "tree-sitter-cli",
 ]
 
 [[package]]
@@ -529,12 +526,16 @@ dependencies = [
 name = "rust_sitter_tool"
 version = "0.1.0"
 dependencies = [
+ "cc",
  "insta",
  "rust_sitter_common",
  "serde",
  "serde_json",
  "syn",
  "syn-inline-mod",
+ "tempdir",
+ "tree-sitter",
+ "tree-sitter-cli",
 ]
 
 [[package]]

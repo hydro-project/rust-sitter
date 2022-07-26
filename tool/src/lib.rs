@@ -236,15 +236,35 @@ fn gen_struct_or_variant(
 
     let prec_left_param = prec_left_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
 
+    let prec_right_attr = attrs
+        .iter()
+        .find(|attr| attr.path == syn::parse_quote!(rust_sitter::prec_right));
+
+    let prec_right_param = prec_right_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
+
     let seq_rule = json!({
         "type": "SEQ",
         "members": children
     });
 
     let rule = if let Some(Expr::Lit(lit)) = prec_left_param {
+        if prec_right_attr.is_some() {
+            panic!("prec_left and prec_right cannot both be specified");
+        }
+
         if let Lit::Int(i) = &lit.lit {
             json!({
                 "type": "PREC_LEFT",
+                "value": i.base10_parse::<u32>().unwrap(),
+                "content": seq_rule
+            })
+        } else {
+            panic!("Expected integer literal for precedence");
+        }
+    } else if let Some(Expr::Lit(lit)) = prec_right_param {
+        if let Lit::Int(i) = &lit.lit {
+            json!({
+                "type": "PREC_RIGHT",
                 "value": i.base10_parse::<u32>().unwrap(),
                 "content": seq_rule
             })
@@ -397,6 +417,41 @@ pub fn generate_grammars(root_file: &Path) -> Vec<String> {
         .iter()
         .for_each(|i| generate_all_grammars(i, &mut out));
     out
+}
+
+#[cfg(feature = "build_parsers")]
+use tempdir::TempDir;
+
+#[cfg(feature = "build_parsers")]
+use std::io::Write;
+
+#[cfg(feature = "build_parsers")]
+use tree_sitter_cli::generate;
+
+#[cfg(feature = "build_parsers")]
+pub fn build_parsers(root_file: &Path) {
+    generate_grammars(root_file).iter().for_each(|grammar| {
+        let dir = TempDir::new("grammar").unwrap();
+        let grammar_file = dir.path().join("parser.c");
+        let mut f = std::fs::File::create(grammar_file).unwrap();
+
+        let (grammar_name, grammar_c) = generate::generate_parser_for_grammar(grammar).unwrap();
+        f.write_all(grammar_c.as_bytes()).unwrap();
+        drop(f);
+
+        let header_dir = dir.path().join("tree_sitter");
+        std::fs::create_dir(&header_dir).unwrap();
+        let mut parser_file = std::fs::File::create(header_dir.join("parser.h")).unwrap();
+        parser_file
+            .write_all(tree_sitter::PARSER_HEADER.as_bytes())
+            .unwrap();
+        drop(parser_file);
+
+        cc::Build::new()
+            .include(&dir)
+            .file(dir.path().join("parser.c"))
+            .compile(&grammar_name);
+    });
 }
 
 #[cfg(test)]
