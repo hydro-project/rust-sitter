@@ -15,7 +15,7 @@ path = "src/lib.rs"
 
 [dependencies]
 tree-sitter = "0.20.6"
-rust-sitter-macro = { path = "../macro" }
+rust-sitter-macro = { version = "0.1.0", path = "../macro" }
 
 [dev-dependencies]
 insta = "1.7.1"

@@ -18,7 +18,7 @@ path = "src/lib.rs"
 syn = { version = "1.0", features = [ "full", "extra-traits" ] }
 quote = "1.0"
 proc-macro2 = "1.0.27"
-rust-sitter-common = { path = "../common" }
+rust-sitter-common = { version="0.1.0", path = "../common" }
 
 [dev-dependencies]
 insta = "1.7.1"

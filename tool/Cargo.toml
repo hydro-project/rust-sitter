@@ -19,7 +19,7 @@ syn = { version = "1.0", features = [ "full", "extra-traits" ] }
 syn-inline-mod = "0.5.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-rust-sitter-common = { path = "../common" }
+rust-sitter-common = { version = "0.1.0", path = "../common" }
 
 tempdir = { version = "0.3.7", optional = true }
 tree-sitter = { version = "0.20.6", optional = true }

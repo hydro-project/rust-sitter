@@ -2,7 +2,25 @@
 Rust Sitter makes it easy to create efficient parsers in Rust by leveraging the [Tree Sitter](https://tree-sitter.github.io/tree-sitter/) parser generator. With Rust Sitter, you can define your entire grammar with annotations on idiomatic Rust code, and let macros generate the parser and type-safe bindings for you!
 
 ## Quickstart
-TODO(shadaj): describe how to set up the build
+First, add Rust/Tree Sitter to your `Cargo.toml`:
+```toml
+[dependencies]
+rust-sitter = "0.1.0"
+tree-sitter = "0.20.6"
+
+[build-dependencies]
+rust-sitter-tool = "0.1.0"
+```
+
+The first step is to configure your `build.rs` to compile and link the generated Tree Sitter parser:
+
+```rust
+use std::path::PathBuf;
+
+fn main() {
+    rust_sitter_tool::build_parsers(&PathBuf::from("src/main.rs"));
+}
+```
 
 Now that we have Rust Sitter added to our project, we can define our grammar. Rust Sitter grammars are defined in annotated Rust modules. First, we define the module that will contain our grammar
 
