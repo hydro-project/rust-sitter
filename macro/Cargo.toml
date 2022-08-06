@@ -1,5 +1,5 @@
 [package]
-name = "rust_sitter_macro"
+name = "rust-sitter-macro"
 description = "Procedural macros for Rust Sitter"
 readme = "../README.md"
 repository = "https://github.com/hydro-project/rust-sitter"
@@ -18,7 +18,7 @@ path = "src/lib.rs"
 syn = { version = "1.0", features = [ "full", "extra-traits" ] }
 quote = "1.0"
 proc-macro2 = "1.0.27"
-rust_sitter_common = { path = "../common" }
+rust-sitter-common = { path = "../common" }
 
 [dev-dependencies]
 insta = "1.7.1"

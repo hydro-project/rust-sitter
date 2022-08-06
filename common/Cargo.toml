@@ -1,5 +1,5 @@
 [package]
-name = "rust_sitter_common"
+name = "rust-sitter-common"
 description = "Shared logic for the Rust Sitter macro and tool"
 readme = "../README.md"
 repository = "https://github.com/hydro-project/rust-sitter"

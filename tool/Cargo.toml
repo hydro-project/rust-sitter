@@ -1,5 +1,5 @@
 [package]
-name = "rust_sitter_tool"
+name = "rust-sitter-tool"
 description = "The external tool for Rust Sitter that extracts grammars from Rust definitions"
 readme = "../README.md"
 repository = "https://github.com/hydro-project/rust-sitter"
@@ -19,7 +19,7 @@ syn = { version = "1.0", features = [ "full", "extra-traits" ] }
 syn-inline-mod = "0.5.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-rust_sitter_common = { path = "../common" }
+rust-sitter-common = { path = "../common" }
 
 tempdir = { version = "0.3.7", optional = true }
 tree-sitter = { version = "0.20.6", optional = true }

@@ -1,5 +1,5 @@
 [package]
-name = "rust_sitter"
+name = "rust-sitter"
 description = "A package for defining tree-sitter grammars alongside Rust logic"
 readme = "../README.md"
 repository = "https://github.com/hydro-project/rust-sitter"
@@ -15,7 +15,7 @@ path = "src/lib.rs"
 
 [dependencies]
 tree-sitter = "0.20.6"
-rust_sitter_macro = { path = "../macro" }
+rust-sitter-macro = { path = "../macro" }
 
 [dev-dependencies]
 insta = "1.7.1"
