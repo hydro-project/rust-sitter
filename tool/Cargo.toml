@@ -24,7 +24,7 @@ rust-sitter-common = { version = "0.1.0", path = "../common" }
 tempdir = { version = "0.3.7", optional = true }
 tree-sitter = { version = "0.20.6", optional = true }
 tree-sitter-cli = { version = "0.20.6", optional = true }
-cc = { version = "*", optional = true }
+cc = { version = "1.0.73", optional = true }
 
 [dev-dependencies]
 insta = "1.7.1"
