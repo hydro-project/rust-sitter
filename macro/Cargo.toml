@@ -1,6 +1,7 @@
 [package]
 name = "rust_sitter_macro"
 description = "Procedural macros for Rust Sitter"
+readme = "../README.md"
 version = "0.1.0"
 authors = ["Shadaj Laddad <shadaj@users.noreply.github.com>"]
 edition = "2021"
