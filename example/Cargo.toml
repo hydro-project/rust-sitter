@@ -3,6 +3,7 @@ name = "rust-sitter_example"
 version = "0.1.0"
 authors = ["Shadaj Laddad <shadaj@users.noreply.github.com>"]
 edition = "2021"
+publish = false
 
 [dependencies]
 rust-sitter = { path = "../runtime" }
