@@ -4,3 +4,4 @@ pre-release-replacements = [
 ]
 
 consolidate-commits = true
+shared-version = true
