@@ -1,4 +1,5 @@
 pub use rust_sitter_macro::*;
+pub use tree_sitter::*;
 
 pub trait Extract {
     fn extract(node: tree_sitter::Node, source: &[u8]) -> Self;

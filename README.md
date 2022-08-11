@@ -6,7 +6,6 @@ First, add Rust/Tree Sitter to your `Cargo.toml`:
 ```toml
 [dependencies]
 rust-sitter = "0.1.0"
-tree-sitter = "0.20.6"
 
 [build-dependencies]
 rust-sitter-tool = "0.1.0"

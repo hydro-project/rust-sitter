@@ -8,17 +8,17 @@ mod grammar {
     }
     impl rust_sitter::Extract for Expression {
         #[allow(non_snake_case)]
-        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+        fn extract(node: rust_sitter::Node, source: &[u8]) -> Self {
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
-            fn extract_Expression_Number_0(node: Option<tree_sitter::Node>, source: &[u8]) -> i32 {
+            fn extract_Expression_Number_0(node: Option<rust_sitter::Node>, source: &[u8]) -> i32 {
                 fn make_transform() -> impl Fn(&str) -> i32 {
                     |v| v.parse().unwrap()
                 }
                 make_transform()(node.and_then(|n| n.utf8_text(source).ok()).unwrap())
             }
             #[allow(non_snake_case)]
-            fn extract_Expression_Number(node: tree_sitter::Node, source: &[u8]) -> Expression {
+            fn extract_Expression_Number(node: rust_sitter::Node, source: &[u8]) -> Expression {
                 Expression::Number(extract_Expression_Number_0(
                     node.child_by_field_name("0"),
                     source,
@@ -35,17 +35,17 @@ mod grammar {
     }
     impl rust_sitter::Extract for Whitespace {
         #[allow(non_snake_case)]
-        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+        fn extract(node: rust_sitter::Node, source: &[u8]) -> Self {
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Whitespace__whitespace(
-                node: Option<tree_sitter::Node>,
+                node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> () {
                 ()
             }
             #[allow(non_snake_case)]
-            fn extract_Whitespace(node: tree_sitter::Node, source: &[u8]) -> Whitespace {
+            fn extract_Whitespace(node: rust_sitter::Node, source: &[u8]) -> Whitespace {
                 Whitespace {
                     _whitespace: extract_Whitespace__whitespace(
                         node.child_by_field_name("_whitespace"),
@@ -57,15 +57,15 @@ mod grammar {
         }
     }
     extern "C" {
-        fn tree_sitter_test() -> tree_sitter::Language;
+        fn tree_sitter_test() -> rust_sitter::Language;
     }
-    fn language() -> tree_sitter::Language {
+    fn language() -> rust_sitter::Language {
         unsafe { tree_sitter_test() }
     }
     pub fn parse(
         input: &str,
     ) -> core::result::Result<Expression, Vec<rust_sitter::errors::ParseError>> {
-        let mut parser = tree_sitter::Parser::new();
+        let mut parser = rust_sitter::Parser::new();
         parser.set_language(language()).unwrap();
         let tree = parser.parse(input, None).unwrap();
         let root_node = tree.root_node();

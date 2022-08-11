@@ -136,7 +136,7 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
     out.push(syn::parse_quote! {
         #[allow(non_snake_case)]
         #[allow(clippy::unused_unit)]
-        fn #extract_ident(node: Option<tree_sitter::Node>, source: &[u8]) -> #leaf_type {
+        fn #extract_ident(node: Option<rust_sitter::Node>, source: &[u8]) -> #leaf_type {
             #(#leaf_stmts)*
             #leaf_expr
         }
@@ -208,7 +208,7 @@ fn gen_struct_or_variant(
     if let Some(variant_ident) = variant_ident {
         out.push(syn::parse_quote! {
             #[allow(non_snake_case)]
-            fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> #containing_type {
+            fn #extract_ident(node: rust_sitter::Node, source: &[u8]) -> #containing_type {
                 #containing_type::#variant_ident(
                     #(#children_parsed),*
                 )
@@ -217,7 +217,7 @@ fn gen_struct_or_variant(
     } else {
         out.push(syn::parse_quote! {
             #[allow(non_snake_case)]
-            fn #extract_ident(node: tree_sitter::Node, source: &[u8]) -> #containing_type {
+            fn #extract_ident(node: rust_sitter::Node, source: &[u8]) -> #containing_type {
                 #containing_type {
                     #(#children_parsed),*
                 }
@@ -284,15 +284,14 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                     )
                 });
 
-                let mut match_cases: Vec<Arm> = vec![];
-                e.variants.iter().for_each(|v| {
+                let match_cases: Vec<Arm> = e.variants.iter().map(|v| {
                     let variant_path = format!("{}_{}", e.ident, v.ident);
                     let extract_ident =
                         Ident::new(&format!("extract_{}", variant_path), Span::call_site());
-                    match_cases.push(syn::parse_quote! {
+                    syn::parse_quote! {
                         #variant_path => #extract_ident(node.child(0).unwrap(), source)
-                    });
-                });
+                    }
+                }).collect();
 
                 e.attrs.retain(|a| !is_sitter_attr(a));
                 e.variants.iter_mut().for_each(|v| {
@@ -306,7 +305,7 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #enum_name {
                         #[allow(non_snake_case)]
-                        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+                        fn extract(node: rust_sitter::Node, source: &[u8]) -> Self {
                             #(#impl_body)*
 
                             match node.child(0).unwrap().kind() {
@@ -343,7 +342,7 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #struct_name {
                         #[allow(non_snake_case)]
-                        fn extract(node: tree_sitter::Node, source: &[u8]) -> Self {
+                        fn extract(node: rust_sitter::Node, source: &[u8]) -> Self {
                             #(#impl_body)*
                             #extract_ident(node, source)
                         }
@@ -361,19 +360,19 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
 
     transformed.push(syn::parse_quote! {
         extern "C" {
-            fn #tree_sitter_ident() -> tree_sitter::Language;
+            fn #tree_sitter_ident() -> rust_sitter::Language;
         }
     });
 
     transformed.push(syn::parse_quote! {
-        fn language() -> tree_sitter::Language {
+        fn language() -> rust_sitter::Language {
             unsafe { #tree_sitter_ident() }
         }
     });
 
     transformed.push(syn::parse_quote! {
         pub fn parse(input: &str) -> core::result::Result<#root_type, Vec<rust_sitter::errors::ParseError>> {
-            let mut parser = tree_sitter::Parser::new();
+            let mut parser = rust_sitter::Parser::new();
             parser.set_language(language()).unwrap();
             let tree = parser.parse(input, None).unwrap();
             let root_node = tree.root_node();
