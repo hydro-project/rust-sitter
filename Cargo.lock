@@ -500,6 +500,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust-sitter-example"
+version = "0.1.1"
+dependencies = [
+ "codemap",
+ "codemap-diagnostic",
+ "insta",
+ "rust-sitter",
+ "rust-sitter-tool",
+]
+
+[[package]]
 name = "rust-sitter-macro"
 version = "0.1.1"
 dependencies = [
@@ -525,17 +536,6 @@ dependencies = [
  "tempdir",
  "tree-sitter",
  "tree-sitter-cli",
-]
-
-[[package]]
-name = "rust-sitter_example"
-version = "0.1.1"
-dependencies = [
- "codemap",
- "codemap-diagnostic",
- "insta",
- "rust-sitter",
- "rust-sitter-tool",
 ]
 
 [[package]]

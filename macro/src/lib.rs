@@ -284,14 +284,18 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
                     )
                 });
 
-                let match_cases: Vec<Arm> = e.variants.iter().map(|v| {
-                    let variant_path = format!("{}_{}", e.ident, v.ident);
-                    let extract_ident =
-                        Ident::new(&format!("extract_{}", variant_path), Span::call_site());
-                    syn::parse_quote! {
-                        #variant_path => #extract_ident(node.child(0).unwrap(), source)
-                    }
-                }).collect();
+                let match_cases: Vec<Arm> = e
+                    .variants
+                    .iter()
+                    .map(|v| {
+                        let variant_path = format!("{}_{}", e.ident, v.ident);
+                        let extract_ident =
+                            Ident::new(&format!("extract_{}", variant_path), Span::call_site());
+                        syn::parse_quote! {
+                            #variant_path => #extract_ident(node.child(0).unwrap(), source)
+                        }
+                    })
+                    .collect();
 
                 e.attrs.retain(|a| !is_sitter_attr(a));
                 e.variants.iter_mut().for_each(|v| {
