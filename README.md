@@ -24,7 +24,7 @@ fn main() {
 Now that we have Rust Sitter added to our project, we can define our grammar. Rust Sitter grammars are defined in annotated Rust modules. First, we define the module that will contain our grammar
 
 ```rust
-#[rust_sitter::grammar]
+#[rust_sitter::grammar("arithmetic")]
 mod grammar {
 
 }
@@ -73,7 +73,7 @@ Add(
 All together, our grammar looks like this:
 
 ```rust
-#[rust_sitter::grammar]
+#[rust_sitter::grammar("arithmetic")]
 mod grammar {
     #[rust_sitter::language]
     pub enum Expr {
