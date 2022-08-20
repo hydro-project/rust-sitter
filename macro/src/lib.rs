@@ -22,7 +22,7 @@ impl ToTokens for ParamOrField {
     }
 }
 
-fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
+fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Vec<Item>) {
     let extract_ident = Ident::new(&format!("extract_{}", path), Span::call_site());
     let leaf_type = leaf.ty;
 
@@ -86,7 +86,11 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
                         panic!("Option<Vec> is not supported");
                     }
 
-                    let field_name = leaf.ident.unwrap().to_string();
+                    let field_name = leaf
+                        .ident
+                        .as_ref()
+                        .map(|i| i.to_string())
+                        .unwrap_or(format!("{}", field_index));
 
                     (
                         vec![
@@ -159,6 +163,7 @@ fn gen_struct_or_variant(
         gen_field(
             format!("{}_{}", path.clone(), ident_str),
             field.clone(),
+            i,
             out,
         );
     });
@@ -678,6 +683,31 @@ mod tests {
                     pub struct Number {
                         #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
                         v: i32
+                    }
+                }
+            })
+            .to_token_stream()
+            .to_string()
+        ));
+    }
+
+    #[test]
+    fn enum_with_unamed_vector() {
+        insta::assert_display_snapshot!(rustfmt_code(
+            &expand_grammar(parse_quote! {
+                #[rust_sitter::grammar("test")]
+                mod grammar {
+                    pub struct Number {
+                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+                            value: u32
+                    }
+
+                    #[rust_sitter::language]
+                    pub enum Expr {
+                        Numbers(
+                            #[rust_sitter::repeat(non_empty = true)]
+                            Vec<Number>
+                        )
                     }
                 }
             })
