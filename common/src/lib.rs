@@ -4,7 +4,7 @@ use syn::{
     *,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NameValueExpr {
     pub path: Ident,
     pub eq_token: Token![=],
@@ -21,7 +21,7 @@ impl Parse for NameValueExpr {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldThenParams {
     pub field: Field,
     pub comma: Option<Token![,]>,
