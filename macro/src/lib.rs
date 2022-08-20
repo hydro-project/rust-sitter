@@ -165,6 +165,8 @@ fn gen_struct_or_variant(
 
     let extract_ident = Ident::new(&format!("extract_{}", path), Span::call_site());
 
+    let mut have_named_field = false;
+
     let children_parsed = fields
         .iter()
         .enumerate()
@@ -195,6 +197,7 @@ fn gen_struct_or_variant(
                 ParamOrField::Param(expr)
             } else {
                 let field_name = field.ident.as_ref().unwrap();
+                have_named_field = true;
                 ParamOrField::Field(FieldValue {
                     attrs: vec![],
                     member: Member::Named(field_name.clone()),
@@ -206,14 +209,25 @@ fn gen_struct_or_variant(
         .collect::<Vec<ParamOrField>>();
 
     if let Some(variant_ident) = variant_ident {
-        out.push(syn::parse_quote! {
-            #[allow(non_snake_case)]
-            fn #extract_ident(node: rust_sitter::Node, source: &[u8]) -> #containing_type {
-                #containing_type::#variant_ident(
-                    #(#children_parsed),*
-                )
-            }
-        });
+        if have_named_field {
+            out.push(syn::parse_quote! {
+                #[allow(non_snake_case)]
+                fn #extract_ident(node: rust_sitter::Node, source: &[u8]) -> #containing_type {
+                    #containing_type::#variant_ident {
+                        #(#children_parsed),*
+                    }
+                }
+            });
+        } else {
+            out.push(syn::parse_quote! {
+                #[allow(non_snake_case)]
+                fn #extract_ident(node: rust_sitter::Node, source: &[u8]) -> #containing_type {
+                    #containing_type::#variant_ident(
+                        #(#children_parsed),*
+                    )
+                }
+            });
+        }
     } else {
         out.push(syn::parse_quote! {
             #[allow(non_snake_case)]
@@ -664,6 +678,31 @@ mod tests {
                     pub struct Number {
                         #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
                         v: i32
+                    }
+                }
+            })
+            .to_token_stream()
+            .to_string()
+        ));
+    }
+
+    #[test]
+    fn enum_with_named_field() {
+        insta::assert_display_snapshot!(rustfmt_code(
+            &expand_grammar(parse_quote! {
+                #[rust_sitter::grammar("test")]
+                mod grammar {
+                    #[rust_sitter::language]
+                    pub enum Expr {
+                        Number(
+                                #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+                                u32
+                        ),
+                        Neg {
+                            #[rust_sitter::leaf(text = "!")]
+                            _bang: (),
+                            value: Box<Expr>,
+                        }
                     }
                 }
             })

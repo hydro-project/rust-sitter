@@ -461,6 +461,33 @@ mod tests {
     use super::generate_grammar;
 
     #[test]
+    fn enum_with_named_field() {
+        let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
+            mod grammar {
+                #[rust_sitter::language]
+                pub enum Expr {
+                    Number(
+                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+                            u32
+                    ),
+                    Neg {
+                        #[rust_sitter::leaf(text = "!")]
+                        _bang: (),
+                        value: Box<Expr>,
+                    }
+                }
+            }
+        } {
+            m
+        } else {
+            panic!()
+        };
+
+        insta::assert_display_snapshot!(generate_grammar(&m));
+    }
+
+    #[test]
     fn enum_transformed_fields() {
         let m = if let syn::Item::Mod(m) = parse_quote! {
             #[rust_sitter::grammar("test")]
