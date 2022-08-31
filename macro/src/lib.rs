@@ -437,6 +437,7 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
 /// pub struct Code {
 ///     ...
 /// }
+/// ```
 pub fn language(
     _attr: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
