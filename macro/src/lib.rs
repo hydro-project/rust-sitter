@@ -429,6 +429,14 @@ fn expand_grammar(input: ItemMod) -> ItemMod {
 }
 
 #[proc_macro_attribute]
+/// Marks the top level AST node where parsing should start.
+///
+/// ## Example
+/// ```rust
+/// #[rust_sitter::language]
+/// pub struct Code {
+///     ...
+/// }
 pub fn language(
     _attr: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
@@ -437,6 +445,22 @@ pub fn language(
 }
 
 #[proc_macro_attribute]
+/// Defines a field which matches a specific token in the source string.
+/// The token can be defined by passing one of two arguments
+/// - `text`: a string literal that will be exactly matched
+/// - `pattern`: a regular expression that will be matched against the source string
+///
+/// If the resulting token needs to be converted into a richer type at runtime,
+/// such as a number, then the `transform` argument can be used to specify a function
+/// that will be called with the token's text.
+///
+/// ## Example
+/// ```rust
+/// Number(
+///     #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+///     u32
+/// )
+/// ```
 pub fn leaf(
     _attr: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
@@ -445,6 +469,19 @@ pub fn leaf(
 }
 
 #[proc_macro_attribute]
+/// Defines a precedence level for a non-terminal that should be left-associative.
+/// For example, with subtraction we expect 1 - 2 - 3 to be parsed as (1 - 2) - 3,
+/// which corresponds to a left-associativity.
+///
+/// This annotation takes a single, unnamed parameter, which specifies the precedence level.
+/// This is used to resolve conflicts with other non-terminals, so that the one with the higher
+/// precedence will bind more tightly (appear lower in the parse tree).
+///
+/// ## Example
+/// ```rust
+/// #[rust_sitter::prec_left(1)]
+/// Subtract(Box<Expr>, Box<Expr>)
+/// ```
 pub fn prec_left(
     _attr: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
@@ -453,6 +490,21 @@ pub fn prec_left(
 }
 
 #[proc_macro_attribute]
+/// On `Vec<_>` typed fields, specifies a non-terminal that should be parsed in between the elements.
+/// The [`rust_sitter::repeat`] annotation must be used on the field as well.
+///
+/// This annotation takes a single, unnamed argument, which specifies a field type to parse. This can
+/// either be a reference to another type, or can be defined as a `leaf` field. Generally, the argument
+/// is parsed using the same rules as an unnamed field of an enum variant.
+///
+/// ## Example
+/// ```rust
+/// #[rust_sitter::delimited(
+///     #[rust_sitter::leaf(text = ",")]
+///     ()
+/// )]
+/// numbers: Vec<Number>
+/// ```
 pub fn delimited(
     _attr: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
@@ -461,6 +513,15 @@ pub fn delimited(
 }
 
 #[proc_macro_attribute]
+/// On `Vec<_>` typed fields, specifies additional configure for how the repeated elements should
+/// be parsed. In particular, this annotation takes the following named arguments:
+/// - `non_empty` - if this argument is `true`, then there must be at least one element parsed
+///
+/// ## Example
+/// ```rust
+/// #[rust_sitter::repeat(non_empty = true)]
+/// numbers: Vec<Number>
+/// ```
 pub fn repeat(
     _attr: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
@@ -468,7 +529,9 @@ pub fn repeat(
     item
 }
 
-/// Mark a module to be analyzed for a Tree Sitter grammar.
+/// Mark a module to be analyzed for a Rust Sitter grammar. Takes a single, unnamed argument, which
+/// specifies the name of the grammar. This name must be unique across all Rust Sitter grammars within
+/// a compilation unit.
 #[proc_macro_attribute]
 pub fn grammar(
     attr: proc_macro::TokenStream,

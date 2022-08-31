@@ -417,6 +417,8 @@ fn generate_all_grammars(item: &Item, out: &mut Vec<String>) {
     }
 }
 
+/// Generates JSON strings defining Tree Sitter grammars for every Rust Sitter
+/// grammar found in the given module and recursive submodules.
 pub fn generate_grammars(root_file: &Path) -> Vec<String> {
     let root_file = syn_inline_mod::parse_and_inline_modules(root_file).items;
     let mut out = vec![];
@@ -436,6 +438,9 @@ use std::io::Write;
 use tree_sitter_cli::generate;
 
 #[cfg(feature = "build_parsers")]
+/// Using the `cc` crate, generates and compiles a C parser with Tree Sitter
+/// for every Rust Sitter grammar found in the given module and recursive
+/// submodules.
 pub fn build_parsers(root_file: &Path) {
     generate_grammars(root_file).iter().for_each(|grammar| {
         let dir = TempDir::new("grammar").unwrap();
