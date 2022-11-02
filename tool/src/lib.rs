@@ -30,9 +30,6 @@ fn generate_all_grammars(item: &Item, out: &mut Vec<String>) {
 }
 
 #[cfg(feature = "build_parsers")]
-use tempdir::TempDir;
-
-#[cfg(feature = "build_parsers")]
 use std::io::Write;
 use std::path::Path;
 
@@ -45,7 +42,10 @@ use tree_sitter_cli::generate;
 /// submodules.
 pub fn build_parsers(root_file: &Path) {
     generate_grammars(root_file).iter().for_each(|grammar| {
-        let dir = TempDir::new("grammar").unwrap();
+        let dir = tempfile::Builder::new()
+            .prefix("grammar")
+            .tempdir()
+            .unwrap();
         let grammar_file = dir.path().join("parser.c");
         let mut f = std::fs::File::create(grammar_file).unwrap();
 

@@ -12,7 +12,7 @@ categories = ["development-tools"]
 
 [features]
 default = ["build_parsers"]
-build_parsers = ["dep:tempdir", "dep:tree-sitter", "dep:tree-sitter-cli", "dep:cc"]
+build_parsers = ["dep:tempfile", "dep:tree-sitter", "dep:tree-sitter-cli", "dep:cc"]
 
 [dependencies]
 syn = { version = "1.0", features = [ "full", "extra-traits" ] }
@@ -21,7 +21,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 rust-sitter-common = { version = "0.1.0", path = "../common" }
 
-tempdir = { version = "0.3.7", optional = true }
+tempfile = { version = "3.0.0", optional = true }
 tree-sitter = { version = "0.20.6", optional = true }
 tree-sitter-cli = { version = "0.20.6", optional = true }
 cc = { version = "1.0.73", optional = true }
