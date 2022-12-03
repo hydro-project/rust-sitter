@@ -7,6 +7,7 @@ use rust_sitter::errors::{ParseError, ParseErrorReason};
 mod arithmetic;
 mod optionals;
 mod repetitions;
+mod words;
 
 fn convert_parse_error_to_diagnostics(
     file_span: &codemap::Span,

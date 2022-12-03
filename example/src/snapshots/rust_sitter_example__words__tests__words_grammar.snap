@@ -1,0 +1,13 @@
+---
+source: example/src/words.rs
+expression: "grammar::parse(\"if\")"
+---
+Ok(
+    Words {
+        _words: [
+            Keyword(
+                (),
+            ),
+        ],
+    },
+)

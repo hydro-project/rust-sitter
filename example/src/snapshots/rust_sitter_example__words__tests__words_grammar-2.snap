@@ -1,0 +1,13 @@
+---
+source: example/src/words.rs
+expression: "grammar::parse(\"hello\")"
+---
+Ok(
+    Words {
+        _words: [
+            Ident(
+                "hello",
+            ),
+        ],
+    },
+)

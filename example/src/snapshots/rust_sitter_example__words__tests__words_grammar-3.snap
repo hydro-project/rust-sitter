@@ -1,0 +1,13 @@
+---
+source: example/src/words.rs
+expression: "grammar::parse(\"ifhello\")"
+---
+Ok(
+    Words {
+        _words: [
+            Ident(
+                "ifhello",
+            ),
+        ],
+    },
+)
