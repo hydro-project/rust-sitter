@@ -8,11 +8,23 @@ fn gen_field(
     path: String,
     leaf_type: Type,
     leaf_attrs: Vec<Attribute>,
+    word_rule: &mut Option<String>,
     out: &mut Map<String, Value>,
 ) -> (Value, bool) {
     let leaf_attr = leaf_attrs
         .iter()
         .find(|attr| attr.path == syn::parse_quote!(rust_sitter::leaf));
+
+    if leaf_attrs
+        .iter()
+        .any(|attr| attr.path == syn::parse_quote!(rust_sitter::word))
+    {
+        if word_rule.is_some() {
+            panic!("Multiple `word` rules specified");
+        }
+
+        *word_rule = Some(path.clone());
+    }
 
     let leaf_params = leaf_attr.and_then(|a| {
         a.parse_args_with(Punctuated::<NameValueExpr, Token![,]>::parse_terminated)
@@ -97,7 +109,7 @@ fn gen_field(
             false,
         )
     } else if is_vec {
-        let (field_json, field_optional) = gen_field(path.clone(), inner_type_vec, vec![], out);
+        let (field_json, field_optional) = gen_field(path.clone(), inner_type_vec, vec![], word_rule, out);
 
         let delimited_attr = leaf_attrs
             .iter()
@@ -111,6 +123,7 @@ fn gen_field(
                 format!("{path}_vec_delimiter"),
                 p.field.ty,
                 p.field.attrs,
+                word_rule,
                 out,
             )
         });
@@ -207,7 +220,7 @@ fn gen_field(
         )
     } else {
         // is_option
-        let (field_json, field_optional) = gen_field(path, inner_type_option, leaf_attrs, out);
+        let (field_json, field_optional) = gen_field(path, inner_type_option, leaf_attrs, word_rule, out);
 
         if field_optional {
             panic!("Option<Option<_>> is not supported");
@@ -222,6 +235,7 @@ fn gen_struct_or_variant(
     attrs: Vec<Attribute>,
     fields: Fields,
     out: &mut Map<String, Value>,
+    word_rule: &mut Option<String>,
 ) {
     let children = fields
         .iter()
@@ -244,6 +258,7 @@ fn gen_struct_or_variant(
                     format!("{}_{}", path.clone(), ident_str),
                     field.ty.clone(),
                     field.attrs.clone(),
+                    word_rule,
                     out,
                 );
 
@@ -367,6 +382,8 @@ pub fn generate_grammar(module: &ItemMod) -> Value {
         .expect("Each parser must have the root type annotated with `#[rust_sitter::language]`")
         .to_string();
 
+    // Optionally locate the rule annotated with `#[rust_sitter::word]`.
+    let mut word_rule = None;
     contents.iter().for_each(|c| {
         let (symbol, attrs) = match c {
             Item::Enum(e) => {
@@ -376,6 +393,7 @@ pub fn generate_grammar(module: &ItemMod) -> Value {
                         v.attrs.clone(),
                         v.fields.clone(),
                         &mut rules_map,
+                        &mut word_rule,
                     )
                 });
 
@@ -404,6 +422,7 @@ pub fn generate_grammar(module: &ItemMod) -> Value {
                     s.attrs.clone(),
                     s.fields.clone(),
                     &mut rules_map,
+                    &mut word_rule,
                 );
 
                 (s.ident.to_string(), s.attrs.clone())
@@ -430,6 +449,7 @@ pub fn generate_grammar(module: &ItemMod) -> Value {
 
     json!({
         "name": grammar_name,
+        "word": word_rule,
         "rules": rules_map,
         "extras": extras_list
     })
