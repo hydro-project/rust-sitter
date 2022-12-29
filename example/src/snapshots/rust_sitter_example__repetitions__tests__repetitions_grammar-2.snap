@@ -5,8 +5,12 @@ expression: "grammar::parse(\"1\")"
 Ok(
     NumberList {
         numbers: [
-            Number {
-                v: 1,
+            Spanned {
+                value: Number {
+                    v: 1,
+                },
+                start: 0,
+                end: 1,
             },
         ],
     },

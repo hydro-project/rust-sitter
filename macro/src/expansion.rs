@@ -81,6 +81,15 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Vec<Item>)
                 )
             } else {
                 let (vec_type, is_vec) = try_extract_inner_type(&inner_type, "Vec");
+                let (inner_type, is_spanned) = try_extract_inner_type(&vec_type, "Spanned");
+                let (inner_type, is_box) = try_extract_inner_type(&inner_type, "Box");
+
+                let inner_extract: syn::Expr = if is_spanned {
+                    parse_quote!(Spanned::<#inner_type>::extract)
+                } else {
+                    parse_quote!(#inner_type::extract)
+                };
+
                 if is_vec {
                     if is_option {
                         panic!("Option<Vec> is not supported");
@@ -104,17 +113,15 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Vec<Item>)
                         syn::parse_quote! {
                             node
                                 .children_by_field_name(#field_name, &mut cursor)
-                                .map(|n| #vec_type::extract(n, source))
+                                .map(|n| #inner_extract(n, source))
                                 .collect::<Vec<#vec_type>>()
                         },
                     )
                 } else {
-                    let (inner_type, is_box) = try_extract_inner_type(&inner_type, "Box");
-
                     let extracted_inner: Expr = if is_option {
-                        syn::parse_quote!(node.map(|n| #inner_type::extract(n, source)))
+                        syn::parse_quote!(node.map(|n| #inner_extract(n, source)))
                     } else {
-                        syn::parse_quote!(#inner_type::extract(node.unwrap(), source))
+                        syn::parse_quote!(#inner_extract(node.unwrap(), source))
                     };
 
                     if is_box {
@@ -375,7 +382,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 vec![Item::Struct(s), extract_impl]
             }
 
-            _ => panic!(),
+            o => vec![o],
         })
         .collect();
 

@@ -65,6 +65,19 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String
         }
     } else {
         let (vec_type, is_vec) = try_extract_inner_type(&inner_type, "Vec");
+        let (vec_type, _) = try_extract_inner_type(&vec_type, "Spanned");
+        let (vec_type, _) = try_extract_inner_type(&vec_type, "Box");
+
+        let symbol_name = if let Type::Path(p) = &vec_type {
+            if p.path.segments.len() == 1 {
+                p.path.segments[0].ident.to_string()
+            } else {
+                panic!("Expected a single segment path");
+            }
+        } else {
+            panic!("Expected a path");
+        };
+
         if is_vec {
             if is_option {
                 panic!("Option<Vec> is not supported");
@@ -106,22 +119,14 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String
                 .map(|e| e == syn::parse_quote!(true))
                 .unwrap_or(false);
 
-            let field_rule = if let Type::Path(p) = &vec_type {
-                if p.path.segments.len() == 1 {
-                    json!({
-                        "type": "FIELD",
-                        "name": leaf.ident.as_ref().map(|v| v.to_string()).unwrap_or(format!("{}", field_index)),
-                        "content": {
-                            "type": "SYMBOL",
-                            "name": p.path.segments.first().unwrap().ident.to_string(),
-                        }
-                    })
-                } else {
-                    panic!("Unexpected leaf type");
+            let field_rule = json!({
+                "type": "FIELD",
+                "name": leaf.ident.as_ref().map(|v| v.to_string()).unwrap_or(format!("{}", field_index)),
+                "content": {
+                    "type": "SYMBOL",
+                    "name": symbol_name,
                 }
-            } else {
-                panic!("Unexpected leaf type");
-            };
+            });
 
             if let Some(delimiter_json) = delimiter_json {
                 let non_empty = json!({
@@ -166,20 +171,10 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String
                 })
             }
         } else {
-            let (inner_type, _) = try_extract_inner_type(&inner_type, "Box");
-
-            if let Type::Path(p) = &inner_type {
-                if p.path.segments.len() == 1 {
-                    json!({
-                        "type": "SYMBOL",
-                        "name": p.path.segments.first().unwrap().ident.to_string(),
-                    })
-                } else {
-                    panic!("Unexpected leaf type");
-                }
-            } else {
-                panic!("Unexpected leaf type");
-            }
+            json!({
+                "type": "SYMBOL",
+                "name": symbol_name,
+            })
         }
     }
 }
@@ -375,7 +370,7 @@ pub fn generate_grammar(module: &ItemMod) -> Value {
                 (s.ident.to_string(), s.attrs.clone())
             }
 
-            _ => panic!(),
+            _ => return,
         };
 
         if attrs

@@ -7,6 +7,23 @@ pub trait Extract {
     fn extract(node: tree_sitter::Node, source: &[u8]) -> Self;
 }
 
+#[derive(Debug)]
+pub struct Spanned<T> {
+    pub value: T,
+    pub start: usize,
+    pub end: usize
+}
+
+impl <T: Extract> Extract for Spanned<T> {
+    fn extract(node: tree_sitter::Node, source: &[u8]) -> Spanned<T> {
+        Spanned {
+            value: Extract::extract(node, source),
+            start: node.start_byte(),
+            end: node.end_byte()
+        }
+    }
+}
+
 pub mod errors {
     #[derive(Debug)]
     /// An explanation for an error that occurred during parsing.
