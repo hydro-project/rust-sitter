@@ -75,7 +75,7 @@ mod grammar {
         let root_node = tree.root_node();
         if root_node.has_error() {
             let mut errors = vec![];
-            rust_sitter::errors::collect_parsing_errors(&root_node, input.as_bytes(), &mut errors);
+            rust_sitter::errors::collect_parsing_errors(&root_node, &mut errors);
             Err(errors)
         } else {
             use rust_sitter::Extract;

@@ -32,18 +32,14 @@ pub mod errors {
 
     /// Given the root node of a Tree Sitter parsing result, accumulates all
     /// errors that were emitted.
-    pub fn collect_parsing_errors(
-        node: &tree_sitter::Node,
-        source: &[u8],
-        errors: &mut Vec<ParseError>,
-    ) {
+    pub fn collect_parsing_errors(node: &tree_sitter::Node, errors: &mut Vec<ParseError>) {
         if node.is_error() {
             if node.child(0).is_some() {
                 // we managed to parse some children, so collect underlying errors for this node
                 let mut inner_errors = vec![];
                 let mut cursor = node.walk();
                 node.children(&mut cursor)
-                    .for_each(|c| collect_parsing_errors(&c, source, &mut inner_errors));
+                    .for_each(|c| collect_parsing_errors(&c, &mut inner_errors));
 
                 errors.push(ParseError {
                     reason: ParseErrorReason::FailedNode(inner_errors),
@@ -84,7 +80,7 @@ pub mod errors {
         } else if node.has_error() {
             let mut cursor = node.walk();
             node.children(&mut cursor)
-                .for_each(|c| collect_parsing_errors(&c, source, errors));
+                .for_each(|c| collect_parsing_errors(&c, errors));
         }
     }
 }

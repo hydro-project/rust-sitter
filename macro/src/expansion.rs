@@ -404,7 +404,6 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
               let mut errors = vec![];
               rust_sitter::errors::collect_parsing_errors(
                   &root_node,
-                  input.as_bytes(),
                   &mut errors,
               );
 
