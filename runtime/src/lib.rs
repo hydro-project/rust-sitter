@@ -11,15 +11,15 @@ pub trait Extract {
 pub struct Spanned<T> {
     pub value: T,
     pub start: usize,
-    pub end: usize
+    pub end: usize,
 }
 
-impl <T: Extract> Extract for Spanned<T> {
+impl<T: Extract> Extract for Spanned<T> {
     fn extract(node: tree_sitter::Node, source: &[u8]) -> Spanned<T> {
         Spanned {
             value: Extract::extract(node, source),
             start: node.start_byte(),
-            end: node.end_byte()
+            end: node.end_byte(),
         }
     }
 }
