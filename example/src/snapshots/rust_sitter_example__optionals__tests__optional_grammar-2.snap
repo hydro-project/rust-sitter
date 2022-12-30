@@ -6,7 +6,13 @@ Ok(
     Language {
         v: None,
         _s: (),
-        t: None,
+        t: Spanned {
+            value: None,
+            span: (
+                1,
+                1,
+            ),
+        },
         _d: Some(
             (),
         ),

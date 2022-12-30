@@ -9,30 +9,103 @@ mod grammar {
     }
     impl rust_sitter::Extract for Language {
         #[allow(non_snake_case)]
-        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
+        fn extract(node: Option<rust_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
             let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
-            fn extract_Language_v(node: Option<rust_sitter::Node>, source: &[u8]) -> Option<i32> {
+            fn extract_Language_v(
+                cursor_opt: &mut Option<rust_sitter::TreeCursor>,
+                source: &[u8],
+                last_idx: &mut usize,
+            ) -> Option<i32> {
                 fn make_transform() -> impl Fn(&str) -> i32 {
                     |v| v.parse().unwrap()
                 }
-                node.and_then(|n| n.utf8_text(source).ok())
-                    .map(|t| make_transform()(t))
+                if let Some(cursor) = cursor_opt.as_mut() {
+                    loop {
+                        let n = cursor.node();
+                        if let Some(name) = cursor.field_name() {
+                            if name == "v" {
+                                let node: Option<rust_sitter::Node> = Some(n);
+                                let out = node
+                                    .and_then(|n| n.utf8_text(source).ok())
+                                    .map(|t| make_transform()(t));
+                                if !cursor.goto_next_sibling() {
+                                    *cursor_opt = None;
+                                };
+                                *last_idx = n.end_byte();
+                                return out;
+                            } else {
+                                let node: Option<rust_sitter::Node> = None;
+                                return node
+                                    .and_then(|n| n.utf8_text(source).ok())
+                                    .map(|t| make_transform()(t));
+                            }
+                        } else {
+                            *last_idx = n.end_byte();
+                        }
+                        if !cursor.goto_next_sibling() {
+                            let node: Option<rust_sitter::Node> = None;
+                            return node
+                                .and_then(|n| n.utf8_text(source).ok())
+                                .map(|t| make_transform()(t));
+                        }
+                    }
+                } else {
+                    let node: Option<rust_sitter::Node> = None;
+                    return node
+                        .and_then(|n| n.utf8_text(source).ok())
+                        .map(|t| make_transform()(t));
+                }
             }
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Language_t(
-                node: Option<rust_sitter::Node>,
+                cursor_opt: &mut Option<rust_sitter::TreeCursor>,
                 source: &[u8],
+                last_idx: &mut usize,
             ) -> Option<Number> {
-                rust_sitter::Extract::extract(node, source)
+                if let Some(cursor) = cursor_opt.as_mut() {
+                    loop {
+                        let n = cursor.node();
+                        if let Some(name) = cursor.field_name() {
+                            if name == "t" {
+                                let node: Option<rust_sitter::Node> = Some(n);
+                                let out = rust_sitter::Extract::extract(node, source, *last_idx);
+                                if !cursor.goto_next_sibling() {
+                                    *cursor_opt = None;
+                                };
+                                *last_idx = n.end_byte();
+                                return out;
+                            } else {
+                                let node: Option<rust_sitter::Node> = None;
+                                return rust_sitter::Extract::extract(node, source, *last_idx);
+                            }
+                        } else {
+                            *last_idx = n.end_byte();
+                        }
+                        if !cursor.goto_next_sibling() {
+                            let node: Option<rust_sitter::Node> = None;
+                            return rust_sitter::Extract::extract(node, source, *last_idx);
+                        }
+                    }
+                } else {
+                    let node: Option<rust_sitter::Node> = None;
+                    return rust_sitter::Extract::extract(node, source, *last_idx);
+                }
             }
             #[allow(non_snake_case)]
             fn extract_Language(node: rust_sitter::Node, source: &[u8]) -> Language {
+                let mut last_idx = node.start_byte();
+                let mut parent_cursor = node.walk();
+                let mut cursor = if parent_cursor.goto_first_child() {
+                    Some(parent_cursor)
+                } else {
+                    None
+                };
                 Language {
-                    v: extract_Language_v(node.child_by_field_name("v"), source),
-                    t: extract_Language_t(node.child_by_field_name("t"), source),
+                    v: extract_Language_v(&mut cursor, source, &mut last_idx),
+                    t: extract_Language_t(&mut cursor, source, &mut last_idx),
                 }
             }
             extract_Language(node, source)
@@ -43,20 +116,64 @@ mod grammar {
     }
     impl rust_sitter::Extract for Number {
         #[allow(non_snake_case)]
-        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
+        fn extract(node: Option<rust_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
             let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
-            fn extract_Number_v(node: Option<rust_sitter::Node>, source: &[u8]) -> i32 {
+            fn extract_Number_v(
+                cursor_opt: &mut Option<rust_sitter::TreeCursor>,
+                source: &[u8],
+                last_idx: &mut usize,
+            ) -> i32 {
                 fn make_transform() -> impl Fn(&str) -> i32 {
                     |v| v.parse().unwrap()
                 }
-                make_transform()(node.and_then(|n| n.utf8_text(source).ok()).unwrap())
+                if let Some(cursor) = cursor_opt.as_mut() {
+                    loop {
+                        let n = cursor.node();
+                        if let Some(name) = cursor.field_name() {
+                            if name == "v" {
+                                let node: Option<rust_sitter::Node> = Some(n);
+                                let out = make_transform()(
+                                    node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
+                                );
+                                if !cursor.goto_next_sibling() {
+                                    *cursor_opt = None;
+                                };
+                                *last_idx = n.end_byte();
+                                return out;
+                            } else {
+                                let node: Option<rust_sitter::Node> = None;
+                                return make_transform()(
+                                    node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
+                                );
+                            }
+                        } else {
+                            *last_idx = n.end_byte();
+                        }
+                        if !cursor.goto_next_sibling() {
+                            let node: Option<rust_sitter::Node> = None;
+                            return make_transform()(
+                                node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
+                            );
+                        }
+                    }
+                } else {
+                    let node: Option<rust_sitter::Node> = None;
+                    return make_transform()(node.and_then(|n| n.utf8_text(source).ok()).unwrap());
+                }
             }
             #[allow(non_snake_case)]
             fn extract_Number(node: rust_sitter::Node, source: &[u8]) -> Number {
+                let mut last_idx = node.start_byte();
+                let mut parent_cursor = node.walk();
+                let mut cursor = if parent_cursor.goto_first_child() {
+                    Some(parent_cursor)
+                } else {
+                    None
+                };
                 Number {
-                    v: extract_Number_v(node.child_by_field_name("v"), source),
+                    v: extract_Number_v(&mut cursor, source, &mut last_idx),
                 }
             }
             extract_Number(node, source)
@@ -84,6 +201,7 @@ mod grammar {
             Ok(rust_sitter::Extract::extract(
                 Some(root_node),
                 input.as_bytes(),
+                0,
             ))
         }
     }

@@ -8,11 +8,17 @@ Ok(
             1,
         ),
         _s: (),
-        t: Some(
-            Number {
-                v: 2,
-            },
-        ),
+        t: Spanned {
+            value: Some(
+                Number {
+                    v: 2,
+                },
+            ),
+            span: (
+                2,
+                3,
+            ),
+        },
         _d: None,
     },
 )

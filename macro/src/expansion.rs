@@ -24,7 +24,7 @@ impl ToTokens for ParamOrField {
     }
 }
 
-fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
+fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) {
     let extract_ident = Ident::new(&format!("extract_{}", path), Span::call_site());
     let leaf_type = leaf.ty;
 
@@ -80,16 +80,48 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
         }
         None => (
             vec![],
-            syn::parse_quote!(rust_sitter::Extract::extract(node, source)),
+            syn::parse_quote!(rust_sitter::Extract::extract(node, source, *last_idx)),
         ),
     };
 
     out.push(syn::parse_quote! {
         #[allow(non_snake_case)]
         #[allow(clippy::unused_unit)]
-        fn #extract_ident(node: Option<rust_sitter::Node>, source: &[u8]) -> #leaf_type {
+        fn #extract_ident(cursor_opt: &mut Option<rust_sitter::TreeCursor>, source: &[u8], last_idx: &mut usize) -> #leaf_type {
             #(#leaf_stmts)*
-            #leaf_expr
+
+            if let Some(cursor) = cursor_opt.as_mut() {
+                loop {
+                    let n = cursor.node();
+                    if let Some(name) = cursor.field_name() {
+                        if name == #ident_str {
+                            let node: Option<rust_sitter::Node> = Some(n);
+                            let out = #leaf_expr;
+
+                            if !cursor.goto_next_sibling() {
+                                *cursor_opt = None;
+                            };
+
+                            *last_idx = n.end_byte();
+
+                            return out;
+                        } else {
+                            let node: Option<rust_sitter::Node> = None;
+                            return #leaf_expr;
+                        }
+                    } else {
+                        *last_idx = n.end_byte();
+                    }
+
+                    if !cursor.goto_next_sibling() {
+                        let node: Option<rust_sitter::Node> = None;
+                        return #leaf_expr;
+                    }
+                }
+            } else {
+                let node: Option<rust_sitter::Node> = None;
+                return #leaf_expr;
+            }
         }
     });
 }
@@ -109,6 +141,7 @@ fn gen_struct_or_variant(
             .unwrap_or(format!("{}", i));
         gen_field(
             format!("{}_{}", path.clone(), ident_str),
+            ident_str,
             field.clone(),
             out,
         );
@@ -137,7 +170,7 @@ fn gen_struct_or_variant(
             skip_over.insert("Box");
 
             let expr = syn::parse_quote! {
-                #ident(node.child_by_field_name(#ident_str), source)
+                #ident(&mut cursor, source, &mut last_idx)
             };
 
             if field.ident.is_none() {
@@ -155,36 +188,42 @@ fn gen_struct_or_variant(
         })
         .collect::<Vec<ParamOrField>>();
 
-    if let Some(variant_ident) = variant_ident {
+    let construct_expr: syn::Expr = if let Some(variant_ident) = variant_ident {
         if have_named_field {
-            out.push(syn::parse_quote! {
-                #[allow(non_snake_case)]
-                fn #extract_ident(node: rust_sitter::Node, source: &[u8]) -> #containing_type {
-                    #containing_type::#variant_ident {
-                        #(#children_parsed),*
-                    }
-                }
-            });
-        } else {
-            out.push(syn::parse_quote! {
-                #[allow(non_snake_case)]
-                fn #extract_ident(node: rust_sitter::Node, source: &[u8]) -> #containing_type {
-                    #containing_type::#variant_ident(
-                        #(#children_parsed),*
-                    )
-                }
-            });
-        }
-    } else {
-        out.push(syn::parse_quote! {
-            #[allow(non_snake_case)]
-            fn #extract_ident(node: rust_sitter::Node, source: &[u8]) -> #containing_type {
-                #containing_type {
+            syn::parse_quote! {
+                #containing_type::#variant_ident {
                     #(#children_parsed),*
                 }
             }
-        });
-    }
+        } else {
+            syn::parse_quote! {
+                #containing_type::#variant_ident(
+                    #(#children_parsed),*
+                )
+            }
+        }
+    } else {
+        syn::parse_quote! {
+            #containing_type {
+                #(#children_parsed),*
+            }
+        }
+    };
+
+    out.push(syn::parse_quote! {
+        #[allow(non_snake_case)]
+        fn #extract_ident(node: rust_sitter::Node, source: &[u8]) -> #containing_type {
+            let mut last_idx = node.start_byte();
+            let mut parent_cursor = node.walk();
+            let mut cursor = if parent_cursor.goto_first_child() {
+                Some(parent_cursor)
+            } else {
+                None
+            };
+
+            #construct_expr
+        }
+    });
 }
 
 pub fn expand_grammar(input: ItemMod) -> ItemMod {
@@ -270,7 +309,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #enum_name {
                         #[allow(non_snake_case)]
-                        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
+                        fn extract(node: Option<rust_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
                             let node = node.unwrap();
                             #(#impl_body)*
                             match node.child(0).unwrap().kind() {
@@ -307,7 +346,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #struct_name {
                         #[allow(non_snake_case)]
-                        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
+                        fn extract(node: Option<rust_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
                             let node = node.unwrap();
                             #(#impl_body)*
                             #extract_ident(node, source)
@@ -353,7 +392,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
               Err(errors)
           } else {
               use rust_sitter::Extract;
-              Ok(rust_sitter::Extract::extract(Some(root_node), input.as_bytes()))
+              Ok(rust_sitter::Extract::extract(Some(root_node), input.as_bytes(), 0))
           }
       }
   });

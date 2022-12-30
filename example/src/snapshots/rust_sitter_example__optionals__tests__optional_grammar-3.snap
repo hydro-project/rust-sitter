@@ -8,7 +8,13 @@ Ok(
             1,
         ),
         _s: (),
-        t: None,
+        t: Spanned {
+            value: None,
+            span: (
+                2,
+                2,
+            ),
+        },
         _d: None,
     },
 )

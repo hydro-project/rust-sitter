@@ -8,21 +8,66 @@ mod grammar {
     }
     impl rust_sitter::Extract for Expression {
         #[allow(non_snake_case)]
-        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
+        fn extract(node: Option<rust_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
             let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
-            fn extract_Expression_Number_0(node: Option<rust_sitter::Node>, source: &[u8]) -> i32 {
+            fn extract_Expression_Number_0(
+                cursor_opt: &mut Option<rust_sitter::TreeCursor>,
+                source: &[u8],
+                last_idx: &mut usize,
+            ) -> i32 {
                 fn make_transform() -> impl Fn(&str) -> i32 {
                     |v| v.parse::<i32>().unwrap()
                 }
-                make_transform()(node.and_then(|n| n.utf8_text(source).ok()).unwrap())
+                if let Some(cursor) = cursor_opt.as_mut() {
+                    loop {
+                        let n = cursor.node();
+                        if let Some(name) = cursor.field_name() {
+                            if name == "0" {
+                                let node: Option<rust_sitter::Node> = Some(n);
+                                let out = make_transform()(
+                                    node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
+                                );
+                                if !cursor.goto_next_sibling() {
+                                    *cursor_opt = None;
+                                };
+                                *last_idx = n.end_byte();
+                                return out;
+                            } else {
+                                let node: Option<rust_sitter::Node> = None;
+                                return make_transform()(
+                                    node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
+                                );
+                            }
+                        } else {
+                            *last_idx = n.end_byte();
+                        }
+                        if !cursor.goto_next_sibling() {
+                            let node: Option<rust_sitter::Node> = None;
+                            return make_transform()(
+                                node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
+                            );
+                        }
+                    }
+                } else {
+                    let node: Option<rust_sitter::Node> = None;
+                    return make_transform()(node.and_then(|n| n.utf8_text(source).ok()).unwrap());
+                }
             }
             #[allow(non_snake_case)]
             fn extract_Expression_Number(node: rust_sitter::Node, source: &[u8]) -> Expression {
+                let mut last_idx = node.start_byte();
+                let mut parent_cursor = node.walk();
+                let mut cursor = if parent_cursor.goto_first_child() {
+                    Some(parent_cursor)
+                } else {
+                    None
+                };
                 Expression::Number(extract_Expression_Number_0(
-                    node.child_by_field_name("0"),
+                    &mut cursor,
                     source,
+                    &mut last_idx,
                 ))
             }
             match node.child(0).unwrap().kind() {
@@ -53,6 +98,7 @@ mod grammar {
             Ok(rust_sitter::Extract::extract(
                 Some(root_node),
                 input.as_bytes(),
+                0,
             ))
         }
     }
