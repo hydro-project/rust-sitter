@@ -83,7 +83,7 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String
 
         if is_vec {
             if is_option {
-                panic!("Option<Vec> is not supported");
+                panic!("Vec<Option<_>> is not supported");
             }
 
             let delimited_attr = leaf
