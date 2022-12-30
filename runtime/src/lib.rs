@@ -57,6 +57,12 @@ pub struct Spanned<T> {
     pub span: Option<(usize, usize)>,
 }
 
+impl<T> AsRef<T> for Spanned<T> {
+    fn as_ref(&self) -> &T {
+        &self.value
+    }
+}
+
 impl<T: Extract> Extract for Spanned<T> {
     fn extract(
         node: Option<tree_sitter::Node>,
