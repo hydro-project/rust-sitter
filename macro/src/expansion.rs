@@ -78,14 +78,10 @@ fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
                 },
             )
         }
-        None => {
-            let element_field = format!("{}_vec_element", path);
-
-            (
-                vec![],
-                syn::parse_quote!(rust_sitter::Extract::extract(node, source, Some(#element_field))),
-            )
-        }
+        None => (
+            vec![],
+            syn::parse_quote!(rust_sitter::Extract::extract(node, source)),
+        ),
     };
 
     out.push(syn::parse_quote! {
@@ -274,7 +270,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #enum_name {
                         #[allow(non_snake_case)]
-                        fn extract(node: Option<rust_sitter::Node>, source: &[u8], _vec_field_name: Option<&str>) -> Self {
+                        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
                             let node = node.unwrap();
                             #(#impl_body)*
                             match node.child(0).unwrap().kind() {
@@ -311,7 +307,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #struct_name {
                         #[allow(non_snake_case)]
-                        fn extract(node: Option<rust_sitter::Node>, source: &[u8], _vec_field_name: Option<&str>) -> Self {
+                        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
                             let node = node.unwrap();
                             #(#impl_body)*
                             #extract_ident(node, source)
@@ -357,7 +353,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
               Err(errors)
           } else {
               use rust_sitter::Extract;
-              Ok(rust_sitter::Extract::extract(Some(root_node), input.as_bytes(), None))
+              Ok(rust_sitter::Extract::extract(Some(root_node), input.as_bytes()))
           }
       }
   });

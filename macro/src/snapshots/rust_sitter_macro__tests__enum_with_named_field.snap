@@ -9,11 +9,7 @@ mod grammar {
     }
     impl rust_sitter::Extract for Expr {
         #[allow(non_snake_case)]
-        fn extract(
-            node: Option<rust_sitter::Node>,
-            source: &[u8],
-            _vec_field_name: Option<&str>,
-        ) -> Self {
+        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
             let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
@@ -30,12 +26,12 @@ mod grammar {
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Expr_Neg__bang(node: Option<rust_sitter::Node>, source: &[u8]) -> () {
-                rust_sitter::Extract::extract(node, source, Some("Expr_Neg__bang_vec_element"))
+                rust_sitter::Extract::extract(node, source)
             }
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Expr_Neg_value(node: Option<rust_sitter::Node>, source: &[u8]) -> Box<Expr> {
-                rust_sitter::Extract::extract(node, source, Some("Expr_Neg_value_vec_element"))
+                rust_sitter::Extract::extract(node, source)
             }
             #[allow(non_snake_case)]
             fn extract_Expr_Neg(node: rust_sitter::Node, source: &[u8]) -> Expr {
@@ -71,7 +67,6 @@ mod grammar {
             Ok(rust_sitter::Extract::extract(
                 Some(root_node),
                 input.as_bytes(),
-                None,
             ))
         }
     }

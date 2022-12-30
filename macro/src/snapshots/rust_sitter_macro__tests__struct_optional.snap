@@ -9,11 +9,7 @@ mod grammar {
     }
     impl rust_sitter::Extract for Language {
         #[allow(non_snake_case)]
-        fn extract(
-            node: Option<rust_sitter::Node>,
-            source: &[u8],
-            _vec_field_name: Option<&str>,
-        ) -> Self {
+        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
             let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
@@ -30,7 +26,7 @@ mod grammar {
                 node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> Option<Number> {
-                rust_sitter::Extract::extract(node, source, Some("Language_t_vec_element"))
+                rust_sitter::Extract::extract(node, source)
             }
             #[allow(non_snake_case)]
             fn extract_Language(node: rust_sitter::Node, source: &[u8]) -> Language {
@@ -47,11 +43,7 @@ mod grammar {
     }
     impl rust_sitter::Extract for Number {
         #[allow(non_snake_case)]
-        fn extract(
-            node: Option<rust_sitter::Node>,
-            source: &[u8],
-            _vec_field_name: Option<&str>,
-        ) -> Self {
+        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
             let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
@@ -92,7 +84,6 @@ mod grammar {
             Ok(rust_sitter::Extract::extract(
                 Some(root_node),
                 input.as_bytes(),
-                None,
             ))
         }
     }
