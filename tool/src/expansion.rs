@@ -202,8 +202,8 @@ fn gen_struct_or_variant(
             skip_over.insert("Spanned");
             skip_over.insert("Box");
 
-            let (_, is_option) = try_extract_inner_type(&field.ty, "Option", &skip_over);
             let (_, is_vec) = try_extract_inner_type(&field.ty, "Vec", &skip_over);
+            let (_, is_option) = try_extract_inner_type(&field.ty, "Option", &skip_over);
 
             let field_contents = gen_field(
                 format!("{}_{}", path.clone(), ident_str),
@@ -213,6 +213,10 @@ fn gen_struct_or_variant(
             );
 
             if is_vec {
+                if is_option {
+                    panic!("Vec<Option<_>> is not supported");
+                }
+
                 field_contents
             } else {
                 let core = json!({
