@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use rust_sitter_common::*;
 use serde_json::{json, Map, Value};
 use syn::{parse::Parse, punctuated::Punctuated, *};
@@ -27,7 +29,12 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String
             .map(|p| p.expr.clone())
     });
 
-    let (inner_type, is_option) = try_extract_inner_type(&leaf_type, "Option");
+    let mut skip_over = HashSet::new();
+    skip_over.insert("Spanned");
+    skip_over.insert("Box");
+
+    let (inner_type, is_vec) = try_extract_inner_type(&leaf_type, "Vec", &skip_over);
+    let (inner_type, is_option) = try_extract_inner_type(&inner_type, "Option", &skip_over);
 
     if let Some(Expr::Lit(lit)) = pattern_param {
         if let Lit::Str(s) = &lit.lit {
@@ -64,11 +71,7 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String
             panic!("Expected string literal for text");
         }
     } else {
-        let (vec_type, is_vec) = try_extract_inner_type(&inner_type, "Vec");
-        let (vec_type, _) = try_extract_inner_type(&vec_type, "Spanned");
-        let (vec_type, _) = try_extract_inner_type(&vec_type, "Box");
-
-        let symbol_name = if let Type::Path(p) = &vec_type {
+        let symbol_name = if let Type::Path(p) = filter_inner_type(&inner_type, &skip_over) {
             if p.path.segments.len() == 1 {
                 p.path.segments[0].ident.to_string()
             } else {
@@ -195,8 +198,12 @@ fn gen_struct_or_variant(
                 .map(|v| v.to_string())
                 .unwrap_or(format!("{}", i));
 
-            let (_, is_option) = try_extract_inner_type(&field.ty, "Option");
-            let (_, is_vec) = try_extract_inner_type(&field.ty, "Vec");
+            let mut skip_over = HashSet::new();
+            skip_over.insert("Spanned");
+            skip_over.insert("Box");
+
+            let (_, is_option) = try_extract_inner_type(&field.ty, "Option", &skip_over);
+            let (_, is_vec) = try_extract_inner_type(&field.ty, "Vec", &skip_over);
 
             let field_contents = gen_field(
                 format!("{}_{}", path.clone(), ident_str),

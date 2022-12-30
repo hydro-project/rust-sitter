@@ -4,14 +4,18 @@ expression: "grammar::parse(\"1\")"
 ---
 Ok(
     NumberList {
-        numbers: [
-            Spanned {
-                value: Number {
-                    v: 1,
+        numbers: Spanned {
+            value: [
+                Spanned {
+                    value: Number {
+                        v: 1,
+                    },
+                    start: 0,
+                    end: 1,
                 },
-                start: 0,
-                end: 1,
-            },
-        ],
+            ],
+            start: 0,
+            end: 1,
+        },
     },
 )

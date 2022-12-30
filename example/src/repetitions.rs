@@ -11,7 +11,7 @@ pub mod grammar {
             #[rust_sitter::leaf(text = ",")]
             ()
         )]
-        numbers: Vec<Spanned<Number>>,
+        numbers: Spanned<Vec<Spanned<Number>>>,
     }
 
     #[derive(Debug)]

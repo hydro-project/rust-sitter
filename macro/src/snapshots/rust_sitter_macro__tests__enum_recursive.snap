@@ -9,7 +9,11 @@ mod grammar {
     }
     impl rust_sitter::Extract for Expression {
         #[allow(non_snake_case)]
-        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
+        fn extract(
+            node: Option<rust_sitter::Node>,
+            source: &[u8],
+            _vec_field_name: Option<&str>,
+        ) -> Self {
             let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
@@ -29,7 +33,7 @@ mod grammar {
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Expression_Neg_0(node: Option<rust_sitter::Node>, source: &[u8]) -> () {
-                rust_sitter::Extract::extract(node, source)
+                rust_sitter::Extract::extract(node, source, Some("0"))
             }
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
@@ -37,7 +41,7 @@ mod grammar {
                 node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> Box<Expression> {
-                rust_sitter::Extract::extract(node, source)
+                rust_sitter::Extract::extract(node, source, Some("1"))
             }
             #[allow(non_snake_case)]
             fn extract_Expression_Neg(node: rust_sitter::Node, source: &[u8]) -> Expression {
@@ -75,6 +79,7 @@ mod grammar {
             Ok(rust_sitter::Extract::extract(
                 Some(root_node),
                 input.as_bytes(),
+                None,
             ))
         }
     }

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use proc_macro2::Span;
 use quote::ToTokens;
 use rust_sitter_common::*;
@@ -46,13 +48,16 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Vec<Item>)
             .map(|p| p.expr.clone())
     });
 
-    let (inner_type, is_option) = try_extract_inner_type(&leaf_type, "Option");
-    let (inner_type, is_vec) = try_extract_inner_type(&inner_type, "Vec");
-    let (inner_type, is_spanned) = try_extract_inner_type(&inner_type, "Spanned");
+    let mut skip_over = HashSet::new();
+    skip_over.insert("Spanned");
+    skip_over.insert("Box");
+
+    let (inner_type, is_vec) = try_extract_inner_type(&leaf_type, "Vec", &skip_over);
+    let (inner_type, is_option) = try_extract_inner_type(&inner_type, "Option", &skip_over);
 
     let (leaf_stmts, leaf_expr): (Vec<Stmt>, Expr) = match transform_param {
         Some(closure) => {
-            if is_vec || is_spanned {
+            if is_vec {
                 panic!("Vec or Spanned of leaves is not supported");
             }
 
@@ -74,39 +79,16 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Vec<Item>)
             )
         }
         None => {
-            if is_vec {
-                if is_option {
-                    panic!("Option<Vec> is not supported");
-                }
+            let field_name = leaf
+                .ident
+                .as_ref()
+                .map(|i| i.to_string())
+                .unwrap_or(format!("{}", field_index));
 
-                let field_name = leaf
-                    .ident
-                    .as_ref()
-                    .map(|i| i.to_string())
-                    .unwrap_or(format!("{}", field_index));
-
-                (
-                    vec![
-                        syn::parse_quote! {
-                            let node = node.unwrap();
-                        },
-                        syn::parse_quote! {
-                            let mut cursor = node.walk();
-                        },
-                    ],
-                    syn::parse_quote! {
-                        node
-                            .children_by_field_name(#field_name, &mut cursor)
-                            .map(|n| rust_sitter::Extract::extract(Some(n), source))
-                            .collect::<Vec<_>>()
-                    },
-                )
-            } else {
-                (
-                    vec![],
-                    syn::parse_quote!(rust_sitter::Extract::extract(node, source)),
-                )
-            }
+            (
+                vec![],
+                syn::parse_quote!(rust_sitter::Extract::extract(node, source, Some(#field_name))),
+            )
         }
     };
 
@@ -159,7 +141,11 @@ fn gen_struct_or_variant(
                 Span::call_site(),
             );
 
-            let (_, is_vec) = try_extract_inner_type(&field.ty, "Vec");
+            let mut skip_over = HashSet::new();
+            skip_over.insert("Spanned");
+            skip_over.insert("Box");
+
+            let (_, is_vec) = try_extract_inner_type(&field.ty, "Vec", &skip_over);
 
             let expr = if is_vec {
                 syn::parse_quote! {
@@ -301,7 +287,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #enum_name {
                         #[allow(non_snake_case)]
-                        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
+                        fn extract(node: Option<rust_sitter::Node>, source: &[u8], _vec_field_name: Option<&str>) -> Self {
                             let node = node.unwrap();
                             #(#impl_body)*
                             match node.child(0).unwrap().kind() {
@@ -338,7 +324,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #struct_name {
                         #[allow(non_snake_case)]
-                        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
+                        fn extract(node: Option<rust_sitter::Node>, source: &[u8], _vec_field_name: Option<&str>) -> Self {
                             let node = node.unwrap();
                             #(#impl_body)*
                             #extract_ident(node, source)
@@ -384,7 +370,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
               Err(errors)
           } else {
               use rust_sitter::Extract;
-              Ok(rust_sitter::Extract::extract(Some(root_node), input.as_bytes()))
+              Ok(rust_sitter::Extract::extract(Some(root_node), input.as_bytes(), None))
           }
       }
   });

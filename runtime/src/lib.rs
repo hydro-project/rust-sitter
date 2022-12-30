@@ -4,22 +4,48 @@ pub use tree_sitter::*;
 /// Defines the logic used to convert a node in a Tree Sitter tree to
 /// the corresponding Rust type.
 pub trait Extract {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8]) -> Self;
+    fn extract(
+        node: Option<tree_sitter::Node>,
+        source: &[u8],
+        vec_field_name: Option<&str>,
+    ) -> Self;
 }
 
 impl Extract for () {
-    fn extract(_node: Option<tree_sitter::Node>, _source: &[u8]) {}
+    fn extract(_node: Option<tree_sitter::Node>, _source: &[u8], _vec_field_name: Option<&str>) {}
 }
 
 impl<T: Extract> Extract for Option<T> {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8]) -> Option<T> {
-        node.map(|n| Extract::extract(Some(n), source))
+    fn extract(
+        node: Option<tree_sitter::Node>,
+        source: &[u8],
+        vec_field_name: Option<&str>,
+    ) -> Option<T> {
+        node.map(|n| Extract::extract(Some(n), source, vec_field_name))
     }
 }
 
 impl<T: Extract> Extract for Box<T> {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8]) -> Self {
-        Box::new(Extract::extract(node, source))
+    fn extract(
+        node: Option<tree_sitter::Node>,
+        source: &[u8],
+        vec_field_name: Option<&str>,
+    ) -> Self {
+        Box::new(Extract::extract(node, source, vec_field_name))
+    }
+}
+
+impl<T: Extract> Extract for Vec<T> {
+    fn extract(
+        node: Option<tree_sitter::Node>,
+        source: &[u8],
+        vec_field_name: Option<&str>,
+    ) -> Self {
+        let node = node.unwrap();
+        let mut cursor = node.walk();
+        node.children_by_field_name(vec_field_name.unwrap(), &mut cursor)
+            .map(|n| Extract::extract(Some(n), source, None))
+            .collect::<Vec<_>>()
     }
 }
 
@@ -31,9 +57,13 @@ pub struct Spanned<T> {
 }
 
 impl<T: Extract> Extract for Spanned<T> {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8]) -> Spanned<T> {
+    fn extract(
+        node: Option<tree_sitter::Node>,
+        source: &[u8],
+        vec_field_name: Option<&str>,
+    ) -> Spanned<T> {
         Spanned {
-            value: Extract::extract(node, source),
+            value: Extract::extract(node, source, vec_field_name),
             start: node.unwrap().start_byte(),
             end: node.unwrap().end_byte(),
         }
