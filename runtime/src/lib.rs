@@ -4,7 +4,23 @@ pub use tree_sitter::*;
 /// Defines the logic used to convert a node in a Tree Sitter tree to
 /// the corresponding Rust type.
 pub trait Extract {
-    fn extract(node: tree_sitter::Node, source: &[u8]) -> Self;
+    fn extract(node: Option<tree_sitter::Node>, source: &[u8]) -> Self;
+}
+
+impl Extract for () {
+    fn extract(_node: Option<tree_sitter::Node>, _source: &[u8]) {}
+}
+
+impl<T: Extract> Extract for Option<T> {
+    fn extract(node: Option<tree_sitter::Node>, source: &[u8]) -> Option<T> {
+        node.map(|n| Extract::extract(Some(n), source))
+    }
+}
+
+impl<T: Extract> Extract for Box<T> {
+    fn extract(node: Option<tree_sitter::Node>, source: &[u8]) -> Self {
+        Box::new(Extract::extract(node, source))
+    }
 }
 
 #[derive(Debug)]
@@ -15,11 +31,11 @@ pub struct Spanned<T> {
 }
 
 impl<T: Extract> Extract for Spanned<T> {
-    fn extract(node: tree_sitter::Node, source: &[u8]) -> Spanned<T> {
+    fn extract(node: Option<tree_sitter::Node>, source: &[u8]) -> Spanned<T> {
         Spanned {
             value: Extract::extract(node, source),
-            start: node.start_byte(),
-            end: node.end_byte(),
+            start: node.unwrap().start_byte(),
+            end: node.unwrap().end_byte(),
         }
     }
 }

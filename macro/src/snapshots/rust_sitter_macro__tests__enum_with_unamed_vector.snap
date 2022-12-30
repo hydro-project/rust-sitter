@@ -8,7 +8,8 @@ mod grammar {
     }
     impl rust_sitter::Extract for Number {
         #[allow(non_snake_case)]
-        fn extract(node: rust_sitter::Node, source: &[u8]) -> Self {
+        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
+            let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Number_value(node: Option<rust_sitter::Node>, source: &[u8]) -> u32 {
@@ -31,7 +32,8 @@ mod grammar {
     }
     impl rust_sitter::Extract for Expr {
         #[allow(non_snake_case)]
-        fn extract(node: rust_sitter::Node, source: &[u8]) -> Self {
+        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
+            let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Expr_Numbers_0(
@@ -41,8 +43,8 @@ mod grammar {
                 let node = node.unwrap();
                 let mut cursor = node.walk();
                 node.children_by_field_name("0", &mut cursor)
-                    .map(|n| Number::extract(n, source))
-                    .collect::<Vec<Number>>()
+                    .map(|n| rust_sitter::Extract::extract(Some(n), source))
+                    .collect::<Vec<_>>()
             }
             #[allow(non_snake_case)]
             fn extract_Expr_Numbers(node: rust_sitter::Node, source: &[u8]) -> Expr {
@@ -71,7 +73,10 @@ mod grammar {
             Err(errors)
         } else {
             use rust_sitter::Extract;
-            Ok(Expr::extract(root_node, input.as_bytes()))
+            Ok(rust_sitter::Extract::extract(
+                Some(root_node),
+                input.as_bytes(),
+            ))
         }
     }
 }
