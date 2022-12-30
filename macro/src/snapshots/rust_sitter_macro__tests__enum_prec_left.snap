@@ -9,11 +9,7 @@ mod grammar {
     }
     impl rust_sitter::Extract for Expression {
         #[allow(non_snake_case)]
-        fn extract(
-            node: Option<rust_sitter::Node>,
-            source: &[u8],
-            _vec_field_name: Option<&str>,
-        ) -> Self {
+        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
             let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
@@ -36,12 +32,12 @@ mod grammar {
                 node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> Box<Expression> {
-                rust_sitter::Extract::extract(node, source, Some("Expression_Sub_0_vec_element"))
+                rust_sitter::Extract::extract(node, source)
             }
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Expression_Sub_1(node: Option<rust_sitter::Node>, source: &[u8]) -> () {
-                rust_sitter::Extract::extract(node, source, Some("Expression_Sub_1_vec_element"))
+                rust_sitter::Extract::extract(node, source)
             }
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
@@ -49,7 +45,7 @@ mod grammar {
                 node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> Box<Expression> {
-                rust_sitter::Extract::extract(node, source, Some("Expression_Sub_2_vec_element"))
+                rust_sitter::Extract::extract(node, source)
             }
             #[allow(non_snake_case)]
             fn extract_Expression_Sub(node: rust_sitter::Node, source: &[u8]) -> Expression {
@@ -88,7 +84,6 @@ mod grammar {
             Ok(rust_sitter::Extract::extract(
                 Some(root_node),
                 input.as_bytes(),
-                None,
             ))
         }
     }
