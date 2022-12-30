@@ -48,11 +48,14 @@ mod grammar {
                 node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> Vec<Number> {
-                rust_sitter::Extract::extract(node, source, Some("0"))
+                rust_sitter::Extract::extract(node, source, Some("Expr_Numbers_0_vec_element"))
             }
             #[allow(non_snake_case)]
             fn extract_Expr_Numbers(node: rust_sitter::Node, source: &[u8]) -> Expr {
-                Expr::Numbers(extract_Expr_Numbers_0(Some(node), source))
+                Expr::Numbers(extract_Expr_Numbers_0(
+                    node.child_by_field_name("0"),
+                    source,
+                ))
             }
             match node.child(0).unwrap().kind() {
                 "Expr_Numbers" => extract_Expr_Numbers(node.child(0).unwrap(), source),

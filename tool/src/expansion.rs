@@ -4,7 +4,7 @@ use rust_sitter_common::*;
 use serde_json::{json, Map, Value};
 use syn::{parse::Parse, punctuated::Punctuated, *};
 
-fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String, Value>) -> Value {
+fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
     let leaf_type = leaf.ty;
 
     let leaf_attr = leaf
@@ -94,14 +94,8 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String
             let delimited_params =
                 delimited_attr.and_then(|a| a.parse_args_with(FieldThenParams::parse).ok());
 
-            let delimiter_json = delimited_params.map(|p| {
-                gen_field(
-                    format!("{}_{}", path, "delimiter"),
-                    p.field,
-                    field_index,
-                    out,
-                )
-            });
+            let delimiter_json = delimited_params
+                .map(|p| gen_field(format!("{}_{}", path, "delimiter"), p.field, out));
 
             let repeat_attr = leaf
                 .attrs
@@ -124,7 +118,7 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String
 
             let field_rule = json!({
                 "type": "FIELD",
-                "name": leaf.ident.as_ref().map(|v| v.to_string()).unwrap_or(format!("{}", field_index)),
+                "name": path,
                 "content": {
                     "type": "SYMBOL",
                     "name": symbol_name,
@@ -206,18 +200,27 @@ fn gen_struct_or_variant(
             let (_, is_option) = try_extract_inner_type(&field.ty, "Option", &skip_over);
 
             let field_contents = gen_field(
-                format!("{}_{}", path.clone(), ident_str),
+                if is_vec {
+                    format!("{}_{}_vec_element", path.clone(), ident_str)
+                } else {
+                    format!("{}_{}", path.clone(), ident_str)
+                },
                 field.clone(),
-                i,
                 out,
             );
 
             if is_vec {
-                if is_option {
-                    panic!("Vec<Option<_>> is not supported");
-                }
+                let vec_symbol_name = format!("{}_{}_vec_contents", path.clone(), ident_str);
+                out.insert(vec_symbol_name.clone(), field_contents);
 
-                field_contents
+                json!({
+                    "type": "FIELD",
+                    "name": ident_str,
+                    "content": {
+                        "type": "SYMBOL",
+                        "name": vec_symbol_name,
+                    }
+                })
             } else {
                 let core = json!({
                     "type": "FIELD",

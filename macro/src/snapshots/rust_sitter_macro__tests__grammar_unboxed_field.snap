@@ -17,7 +17,7 @@ mod grammar {
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Language_e(node: Option<rust_sitter::Node>, source: &[u8]) -> Expression {
-                rust_sitter::Extract::extract(node, source, Some("e"))
+                rust_sitter::Extract::extract(node, source, Some("Language_e_vec_element"))
             }
             #[allow(non_snake_case)]
             fn extract_Language(node: rust_sitter::Node, source: &[u8]) -> Language {

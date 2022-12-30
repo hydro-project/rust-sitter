@@ -30,12 +30,12 @@ mod grammar {
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Expr_Neg__bang(node: Option<rust_sitter::Node>, source: &[u8]) -> () {
-                rust_sitter::Extract::extract(node, source, Some("_bang"))
+                rust_sitter::Extract::extract(node, source, Some("Expr_Neg__bang_vec_element"))
             }
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Expr_Neg_value(node: Option<rust_sitter::Node>, source: &[u8]) -> Box<Expr> {
-                rust_sitter::Extract::extract(node, source, Some("value"))
+                rust_sitter::Extract::extract(node, source, Some("Expr_Neg_value_vec_element"))
             }
             #[allow(non_snake_case)]
             fn extract_Expr_Neg(node: rust_sitter::Node, source: &[u8]) -> Expr {

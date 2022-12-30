@@ -52,7 +52,11 @@ mod grammar {
                 node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> () {
-                rust_sitter::Extract::extract(node, source, Some("_whitespace"))
+                rust_sitter::Extract::extract(
+                    node,
+                    source,
+                    Some("Whitespace__whitespace_vec_element"),
+                )
             }
             #[allow(non_snake_case)]
             fn extract_Whitespace(node: rust_sitter::Node, source: &[u8]) -> Whitespace {

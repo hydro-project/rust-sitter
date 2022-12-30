@@ -20,12 +20,15 @@ mod grammar {
                 node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> Vec<Number> {
-                rust_sitter::Extract::extract(node, source, Some("numbers"))
+                rust_sitter::Extract::extract(node, source, Some("NumberList_numbers_vec_element"))
             }
             #[allow(non_snake_case)]
             fn extract_NumberList(node: rust_sitter::Node, source: &[u8]) -> NumberList {
                 NumberList {
-                    numbers: extract_NumberList_numbers(Some(node), source),
+                    numbers: extract_NumberList_numbers(
+                        node.child_by_field_name("numbers"),
+                        source,
+                    ),
                 }
             }
             extract_NumberList(node, source)
@@ -76,7 +79,11 @@ mod grammar {
                 node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> () {
-                rust_sitter::Extract::extract(node, source, Some("_whitespace"))
+                rust_sitter::Extract::extract(
+                    node,
+                    source,
+                    Some("Whitespace__whitespace_vec_element"),
+                )
             }
             #[allow(non_snake_case)]
             fn extract_Whitespace(node: rust_sitter::Node, source: &[u8]) -> Whitespace {

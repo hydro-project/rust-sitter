@@ -36,12 +36,12 @@ mod grammar {
                 node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> Box<Expression> {
-                rust_sitter::Extract::extract(node, source, Some("0"))
+                rust_sitter::Extract::extract(node, source, Some("Expression_Sub_0_vec_element"))
             }
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Expression_Sub_1(node: Option<rust_sitter::Node>, source: &[u8]) -> () {
-                rust_sitter::Extract::extract(node, source, Some("1"))
+                rust_sitter::Extract::extract(node, source, Some("Expression_Sub_1_vec_element"))
             }
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
@@ -49,7 +49,7 @@ mod grammar {
                 node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> Box<Expression> {
-                rust_sitter::Extract::extract(node, source, Some("2"))
+                rust_sitter::Extract::extract(node, source, Some("Expression_Sub_2_vec_element"))
             }
             #[allow(non_snake_case)]
             fn extract_Expression_Sub(node: rust_sitter::Node, source: &[u8]) -> Expression {

@@ -24,7 +24,7 @@ impl ToTokens for ParamOrField {
     }
 }
 
-fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Vec<Item>) {
+fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
     let extract_ident = Ident::new(&format!("extract_{}", path), Span::call_site());
     let leaf_type = leaf.ty;
 
@@ -79,15 +79,11 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Vec<Item>)
             )
         }
         None => {
-            let field_name = leaf
-                .ident
-                .as_ref()
-                .map(|i| i.to_string())
-                .unwrap_or(format!("{}", field_index));
+            let element_field = format!("{}_vec_element", path);
 
             (
                 vec![],
-                syn::parse_quote!(rust_sitter::Extract::extract(node, source, Some(#field_name))),
+                syn::parse_quote!(rust_sitter::Extract::extract(node, source, Some(#element_field))),
             )
         }
     };
@@ -118,7 +114,6 @@ fn gen_struct_or_variant(
         gen_field(
             format!("{}_{}", path.clone(), ident_str),
             field.clone(),
-            i,
             out,
         );
     });
@@ -145,16 +140,8 @@ fn gen_struct_or_variant(
             skip_over.insert("Spanned");
             skip_over.insert("Box");
 
-            let (_, is_vec) = try_extract_inner_type(&field.ty, "Vec", &skip_over);
-
-            let expr = if is_vec {
-                syn::parse_quote! {
-                    #ident(Some(node), source)
-                }
-            } else {
-                syn::parse_quote! {
-                    #ident(node.child_by_field_name(#ident_str), source)
-                }
+            let expr = syn::parse_quote! {
+                #ident(node.child_by_field_name(#ident_str), source)
             };
 
             if field.ident.is_none() {

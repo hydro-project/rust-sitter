@@ -33,7 +33,7 @@ mod grammar {
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Expression_Neg_0(node: Option<rust_sitter::Node>, source: &[u8]) -> () {
-                rust_sitter::Extract::extract(node, source, Some("0"))
+                rust_sitter::Extract::extract(node, source, Some("Expression_Neg_0_vec_element"))
             }
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
@@ -41,7 +41,7 @@ mod grammar {
                 node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> Box<Expression> {
-                rust_sitter::Extract::extract(node, source, Some("1"))
+                rust_sitter::Extract::extract(node, source, Some("Expression_Neg_1_vec_element"))
             }
             #[allow(non_snake_case)]
             fn extract_Expression_Neg(node: rust_sitter::Node, source: &[u8]) -> Expression {
