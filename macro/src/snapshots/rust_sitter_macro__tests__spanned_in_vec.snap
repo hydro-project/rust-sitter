@@ -1,12 +1,13 @@
 ---
 source: macro/src/lib.rs
-expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod grammar\n                            {\n                                #[rust_sitter :: language] pub enum Expression\n                                {\n                                    Number(#[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] i32,),\n                                } #[rust_sitter :: extra] struct Whitespace\n                                {\n                                    #[rust_sitter :: leaf(pattern = r\"\\s\")] _whitespace : (),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
+expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod grammar\n                            {\n                                use rust_sitter :: Spanned ; #[rust_sitter :: language] pub\n                                struct NumberList { numbers : Vec < Spanned < Number >>, }\n                                pub struct Number\n                                {\n                                    #[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] v : i32\n                                } #[rust_sitter :: extra] struct Whitespace\n                                {\n                                    #[rust_sitter :: leaf(pattern = r\"\\s\")] _whitespace : (),\n                                }\n                            }\n                        }).to_token_stream().to_string())"
 ---
 mod grammar {
-    pub enum Expression {
-        Number(i32),
+    use rust_sitter::Spanned;
+    pub struct NumberList {
+        numbers: Vec<Spanned<Number>>,
     }
-    impl rust_sitter::Extract for Expression {
+    impl rust_sitter::Extract for NumberList {
         #[allow(non_snake_case)]
         fn extract(
             node: Option<rust_sitter::Node>,
@@ -16,23 +17,50 @@ mod grammar {
             let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
-            fn extract_Expression_Number_0(node: Option<rust_sitter::Node>, source: &[u8]) -> i32 {
+            fn extract_NumberList_numbers(
+                node: Option<rust_sitter::Node>,
+                source: &[u8],
+            ) -> Vec<Spanned<Number>> {
+                rust_sitter::Extract::extract(node, source, Some("NumberList_numbers_vec_element"))
+            }
+            #[allow(non_snake_case)]
+            fn extract_NumberList(node: rust_sitter::Node, source: &[u8]) -> NumberList {
+                NumberList {
+                    numbers: extract_NumberList_numbers(
+                        node.child_by_field_name("numbers"),
+                        source,
+                    ),
+                }
+            }
+            extract_NumberList(node, source)
+        }
+    }
+    pub struct Number {
+        v: i32,
+    }
+    impl rust_sitter::Extract for Number {
+        #[allow(non_snake_case)]
+        fn extract(
+            node: Option<rust_sitter::Node>,
+            source: &[u8],
+            _vec_field_name: Option<&str>,
+        ) -> Self {
+            let node = node.unwrap();
+            #[allow(non_snake_case)]
+            #[allow(clippy::unused_unit)]
+            fn extract_Number_v(node: Option<rust_sitter::Node>, source: &[u8]) -> i32 {
                 fn make_transform() -> impl Fn(&str) -> i32 {
                     |v| v.parse().unwrap()
                 }
                 make_transform()(node.and_then(|n| n.utf8_text(source).ok()).unwrap())
             }
             #[allow(non_snake_case)]
-            fn extract_Expression_Number(node: rust_sitter::Node, source: &[u8]) -> Expression {
-                Expression::Number(extract_Expression_Number_0(
-                    node.child_by_field_name("0"),
-                    source,
-                ))
+            fn extract_Number(node: rust_sitter::Node, source: &[u8]) -> Number {
+                Number {
+                    v: extract_Number_v(node.child_by_field_name("v"), source),
+                }
             }
-            match node.child(0).unwrap().kind() {
-                "Expression_Number" => extract_Expression_Number(node.child(0).unwrap(), source),
-                _ => panic!(),
-            }
+            extract_Number(node, source)
         }
     }
     struct Whitespace {
@@ -78,7 +106,7 @@ mod grammar {
     }
     pub fn parse(
         input: &str,
-    ) -> core::result::Result<Expression, Vec<rust_sitter::errors::ParseError>> {
+    ) -> core::result::Result<NumberList, Vec<rust_sitter::errors::ParseError>> {
         let mut parser = rust_sitter::Parser::new();
         parser.set_language(language()).unwrap();
         let tree = parser.parse(input, None).unwrap();

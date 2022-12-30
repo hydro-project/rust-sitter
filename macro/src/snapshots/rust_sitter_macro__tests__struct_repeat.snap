@@ -8,23 +8,27 @@ mod grammar {
     }
     impl rust_sitter::Extract for NumberList {
         #[allow(non_snake_case)]
-        fn extract(node: rust_sitter::Node, source: &[u8]) -> Self {
+        fn extract(
+            node: Option<rust_sitter::Node>,
+            source: &[u8],
+            _vec_field_name: Option<&str>,
+        ) -> Self {
+            let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_NumberList_numbers(
                 node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> Vec<Number> {
-                let node = node.unwrap();
-                let mut cursor = node.walk();
-                node.children_by_field_name("numbers", &mut cursor)
-                    .map(|n| Number::extract(n, source))
-                    .collect::<Vec<Number>>()
+                rust_sitter::Extract::extract(node, source, Some("NumberList_numbers_vec_element"))
             }
             #[allow(non_snake_case)]
             fn extract_NumberList(node: rust_sitter::Node, source: &[u8]) -> NumberList {
                 NumberList {
-                    numbers: extract_NumberList_numbers(Some(node), source),
+                    numbers: extract_NumberList_numbers(
+                        node.child_by_field_name("numbers"),
+                        source,
+                    ),
                 }
             }
             extract_NumberList(node, source)
@@ -35,7 +39,12 @@ mod grammar {
     }
     impl rust_sitter::Extract for Number {
         #[allow(non_snake_case)]
-        fn extract(node: rust_sitter::Node, source: &[u8]) -> Self {
+        fn extract(
+            node: Option<rust_sitter::Node>,
+            source: &[u8],
+            _vec_field_name: Option<&str>,
+        ) -> Self {
+            let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Number_v(node: Option<rust_sitter::Node>, source: &[u8]) -> i32 {
@@ -58,14 +67,23 @@ mod grammar {
     }
     impl rust_sitter::Extract for Whitespace {
         #[allow(non_snake_case)]
-        fn extract(node: rust_sitter::Node, source: &[u8]) -> Self {
+        fn extract(
+            node: Option<rust_sitter::Node>,
+            source: &[u8],
+            _vec_field_name: Option<&str>,
+        ) -> Self {
+            let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Whitespace__whitespace(
                 node: Option<rust_sitter::Node>,
                 source: &[u8],
             ) -> () {
-                ()
+                rust_sitter::Extract::extract(
+                    node,
+                    source,
+                    Some("Whitespace__whitespace_vec_element"),
+                )
             }
             #[allow(non_snake_case)]
             fn extract_Whitespace(node: rust_sitter::Node, source: &[u8]) -> Whitespace {
@@ -98,7 +116,11 @@ mod grammar {
             Err(errors)
         } else {
             use rust_sitter::Extract;
-            Ok(NumberList::extract(root_node, input.as_bytes()))
+            Ok(rust_sitter::Extract::extract(
+                Some(root_node),
+                input.as_bytes(),
+                None,
+            ))
         }
     }
 }

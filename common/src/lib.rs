@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
@@ -46,7 +48,11 @@ impl Parse for FieldThenParams {
     }
 }
 
-pub fn try_extract_inner_type(ty: &Type, inner_of: &str) -> (Type, bool) {
+pub fn try_extract_inner_type(
+    ty: &Type,
+    inner_of: &str,
+    skip_over: &HashSet<&str>,
+) -> (Type, bool) {
     if let Type::Path(p) = &ty {
         let type_segment = p.path.segments.first().unwrap();
         if type_segment.ident == inner_of {
@@ -61,10 +67,41 @@ pub fn try_extract_inner_type(ty: &Type, inner_of: &str) -> (Type, bool) {
             };
 
             (leaf_type, true)
+        } else if skip_over.contains(type_segment.ident.to_string().as_str()) {
+            if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
+                if let GenericArgument::Type(t) = p.args.first().unwrap().clone() {
+                    try_extract_inner_type(&t, inner_of, skip_over)
+                } else {
+                    panic!("Argument in angle brackets must be a type")
+                }
+            } else {
+                panic!("Expected angle bracketed path");
+            }
         } else {
             (ty.clone(), false)
         }
     } else {
         (ty.clone(), false)
+    }
+}
+
+pub fn filter_inner_type(ty: &Type, skip_over: &HashSet<&str>) -> Type {
+    if let Type::Path(p) = &ty {
+        let type_segment = p.path.segments.first().unwrap();
+        if skip_over.contains(type_segment.ident.to_string().as_str()) {
+            if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
+                if let GenericArgument::Type(t) = p.args.first().unwrap().clone() {
+                    filter_inner_type(&t, skip_over)
+                } else {
+                    panic!("Argument in angle brackets must be a type")
+                }
+            } else {
+                panic!("Expected angle bracketed path");
+            }
+        } else {
+            ty.clone()
+        }
+    } else {
+        ty.clone()
     }
 }

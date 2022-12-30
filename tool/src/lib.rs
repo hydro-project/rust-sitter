@@ -354,4 +354,36 @@ mod tests {
 
         insta::assert_display_snapshot!(generate_grammar(&m));
     }
+
+    #[test]
+    fn spanned_in_vec() {
+        let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
+            mod grammar {
+                use rust_sitter::Spanned;
+
+                #[rust_sitter::language]
+                pub struct NumberList {
+                    numbers: Vec<Spanned<Number>>,
+                }
+
+                pub struct Number {
+                    #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+                    v: i32
+                }
+
+                #[rust_sitter::extra]
+                struct Whitespace {
+                    #[rust_sitter::leaf(pattern = r"\s")]
+                    _whitespace: (),
+                }
+            }
+        } {
+            m
+        } else {
+            panic!()
+        };
+
+        insta::assert_display_snapshot!(generate_grammar(&m));
+    }
 }

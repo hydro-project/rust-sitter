@@ -1,8 +1,10 @@
+use std::collections::HashSet;
+
 use rust_sitter_common::*;
 use serde_json::{json, Map, Value};
 use syn::{parse::Parse, punctuated::Punctuated, *};
 
-fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String, Value>) -> Value {
+fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
     let leaf_type = leaf.ty;
 
     let leaf_attr = leaf
@@ -27,7 +29,12 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String
             .map(|p| p.expr.clone())
     });
 
-    let (inner_type, is_option) = try_extract_inner_type(&leaf_type, "Option");
+    let mut skip_over = HashSet::new();
+    skip_over.insert("Spanned");
+    skip_over.insert("Box");
+
+    let (inner_type, is_vec) = try_extract_inner_type(&leaf_type, "Vec", &skip_over);
+    let (inner_type, is_option) = try_extract_inner_type(&inner_type, "Option", &skip_over);
 
     if let Some(Expr::Lit(lit)) = pattern_param {
         if let Lit::Str(s) = &lit.lit {
@@ -64,10 +71,19 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String
             panic!("Expected string literal for text");
         }
     } else {
-        let (vec_type, is_vec) = try_extract_inner_type(&inner_type, "Vec");
+        let symbol_name = if let Type::Path(p) = filter_inner_type(&inner_type, &skip_over) {
+            if p.path.segments.len() == 1 {
+                p.path.segments[0].ident.to_string()
+            } else {
+                panic!("Expected a single segment path");
+            }
+        } else {
+            panic!("Expected a path");
+        };
+
         if is_vec {
             if is_option {
-                panic!("Option<Vec> is not supported");
+                panic!("Vec<Option<_>> is not supported");
             }
 
             let delimited_attr = leaf
@@ -78,14 +94,8 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String
             let delimited_params =
                 delimited_attr.and_then(|a| a.parse_args_with(FieldThenParams::parse).ok());
 
-            let delimiter_json = delimited_params.map(|p| {
-                gen_field(
-                    format!("{}_{}", path, "delimiter"),
-                    p.field,
-                    field_index,
-                    out,
-                )
-            });
+            let delimiter_json = delimited_params
+                .map(|p| gen_field(format!("{}_vec_delimiter", path), p.field, out));
 
             let repeat_attr = leaf
                 .attrs
@@ -106,24 +116,16 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String
                 .map(|e| e == syn::parse_quote!(true))
                 .unwrap_or(false);
 
-            let field_rule = if let Type::Path(p) = &vec_type {
-                if p.path.segments.len() == 1 {
-                    json!({
-                        "type": "FIELD",
-                        "name": leaf.ident.as_ref().map(|v| v.to_string()).unwrap_or(format!("{}", field_index)),
-                        "content": {
-                            "type": "SYMBOL",
-                            "name": p.path.segments.first().unwrap().ident.to_string(),
-                        }
-                    })
-                } else {
-                    panic!("Unexpected leaf type");
+            let field_rule = json!({
+                "type": "FIELD",
+                "name": format!("{}_vec_element", path),
+                "content": {
+                    "type": "SYMBOL",
+                    "name": symbol_name,
                 }
-            } else {
-                panic!("Unexpected leaf type");
-            };
+            });
 
-            if let Some(delimiter_json) = delimiter_json {
+            let vec_contents = if let Some(delimiter_json) = delimiter_json {
                 let non_empty = json!({
                     "type": "SEQ",
                     "members": [
@@ -164,22 +166,20 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Map<String
                     },
                     "content": field_rule
                 })
-            }
-        } else {
-            let (inner_type, _) = try_extract_inner_type(&inner_type, "Box");
+            };
 
-            if let Type::Path(p) = &inner_type {
-                if p.path.segments.len() == 1 {
-                    json!({
-                        "type": "SYMBOL",
-                        "name": p.path.segments.first().unwrap().ident.to_string(),
-                    })
-                } else {
-                    panic!("Unexpected leaf type");
-                }
-            } else {
-                panic!("Unexpected leaf type");
-            }
+            let contents_ident = format!("{}_vec_contents", path);
+            out.insert(contents_ident.clone(), vec_contents);
+
+            json!({
+                "type": "SYMBOL",
+                "name": contents_ident,
+            })
+        } else {
+            json!({
+                "type": "SYMBOL",
+                "name": symbol_name,
+            })
         }
     }
 }
@@ -200,38 +200,36 @@ fn gen_struct_or_variant(
                 .map(|v| v.to_string())
                 .unwrap_or(format!("{}", i));
 
-            let (_, is_option) = try_extract_inner_type(&field.ty, "Option");
-            let (_, is_vec) = try_extract_inner_type(&field.ty, "Vec");
+            let mut skip_over = HashSet::new();
+            skip_over.insert("Spanned");
+            skip_over.insert("Box");
+
+            let (_, is_option) = try_extract_inner_type(&field.ty, "Option", &skip_over);
 
             let field_contents = gen_field(
                 format!("{}_{}", path.clone(), ident_str),
                 field.clone(),
-                i,
                 out,
             );
 
-            if is_vec {
-                field_contents
-            } else {
-                let core = json!({
-                    "type": "FIELD",
-                    "name": ident_str,
-                    "content": field_contents
-                });
+            let core = json!({
+                "type": "FIELD",
+                "name": ident_str,
+                "content": field_contents
+            });
 
-                if is_option {
-                    json!({
-                        "type": "CHOICE",
-                        "members": [
-                            {
-                                "type": "BLANK"
-                            },
-                            core
-                        ]
-                    })
-                } else {
-                    core
-                }
+            if is_option {
+                json!({
+                    "type": "CHOICE",
+                    "members": [
+                        {
+                            "type": "BLANK"
+                        },
+                        core
+                    ]
+                })
+            } else {
+                core
             }
         })
         .collect::<Vec<Value>>();
@@ -375,7 +373,7 @@ pub fn generate_grammar(module: &ItemMod) -> Value {
                 (s.ident.to_string(), s.attrs.clone())
             }
 
-            _ => panic!(),
+            _ => return,
         };
 
         if attrs

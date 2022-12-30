@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use proc_macro2::Span;
 use quote::ToTokens;
 use rust_sitter_common::*;
@@ -22,7 +24,7 @@ impl ToTokens for ParamOrField {
     }
 }
 
-fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Vec<Item>) {
+fn gen_field(path: String, leaf: Field, out: &mut Vec<Item>) {
     let extract_ident = Ident::new(&format!("extract_{}", path), Span::call_site());
     let leaf_type = leaf.ty;
 
@@ -46,94 +48,43 @@ fn gen_field(path: String, leaf: Field, field_index: usize, out: &mut Vec<Item>)
             .map(|p| p.expr.clone())
     });
 
-    let (inner_type, is_option) = try_extract_inner_type(&leaf_type, "Option");
+    let mut skip_over = HashSet::new();
+    skip_over.insert("Spanned");
+    skip_over.insert("Box");
+
+    let (inner_type, is_vec) = try_extract_inner_type(&leaf_type, "Vec", &skip_over);
+    let (inner_type, is_option) = try_extract_inner_type(&inner_type, "Option", &skip_over);
 
     let (leaf_stmts, leaf_expr): (Vec<Stmt>, Expr) = match transform_param {
-        Some(closure) => (
-            vec![syn::parse_quote! {
-                fn make_transform() -> impl Fn(&str) -> #inner_type {
-                    #closure
-                }
-            }],
-            if is_option {
-                syn::parse_quote! {
-                    #leaf_text_expr.map(|t| make_transform()(t))
-                }
-            } else {
-                syn::parse_quote! {
-                    make_transform()(#leaf_text_expr.unwrap())
-                }
-            },
-        ),
-        None => {
-            if inner_type == syn::parse_quote!(()) {
-                (
-                    vec![],
-                    if is_option {
-                        syn::parse_quote! {
-                            node.map(|_n| ())
-                        }
-                    } else {
-                        syn::parse_quote! {
-                            ()
-                        }
-                    },
-                )
-            } else {
-                let (vec_type, is_vec) = try_extract_inner_type(&inner_type, "Vec");
-                if is_vec {
-                    if is_option {
-                        panic!("Option<Vec> is not supported");
-                    }
-
-                    let field_name = leaf
-                        .ident
-                        .as_ref()
-                        .map(|i| i.to_string())
-                        .unwrap_or(format!("{}", field_index));
-
-                    (
-                        vec![
-                            syn::parse_quote! {
-                                let node = node.unwrap();
-                            },
-                            syn::parse_quote! {
-                                let mut cursor = node.walk();
-                            },
-                        ],
-                        syn::parse_quote! {
-                            node
-                                .children_by_field_name(#field_name, &mut cursor)
-                                .map(|n| #vec_type::extract(n, source))
-                                .collect::<Vec<#vec_type>>()
-                        },
-                    )
-                } else {
-                    let (inner_type, is_box) = try_extract_inner_type(&inner_type, "Box");
-
-                    let extracted_inner: Expr = if is_option {
-                        syn::parse_quote!(node.map(|n| #inner_type::extract(n, source)))
-                    } else {
-                        syn::parse_quote!(#inner_type::extract(node.unwrap(), source))
-                    };
-
-                    if is_box {
-                        (
-                            vec![],
-                            syn::parse_quote! {
-                                Box::new(#extracted_inner)
-                            },
-                        )
-                    } else {
-                        (
-                            vec![],
-                            syn::parse_quote! {
-                                #extracted_inner
-                            },
-                        )
-                    }
-                }
+        Some(closure) => {
+            if is_vec {
+                panic!("Vec or Spanned of leaves is not supported");
             }
+
+            (
+                vec![syn::parse_quote! {
+                    fn make_transform() -> impl Fn(&str) -> #inner_type {
+                        #closure
+                    }
+                }],
+                if is_option {
+                    syn::parse_quote! {
+                        #leaf_text_expr.map(|t| make_transform()(t))
+                    }
+                } else {
+                    syn::parse_quote! {
+                        make_transform()(#leaf_text_expr.unwrap())
+                    }
+                },
+            )
+        }
+        None => {
+            let element_field = format!("{}_vec_element", path);
+
+            (
+                vec![],
+                syn::parse_quote!(rust_sitter::Extract::extract(node, source, Some(#element_field))),
+            )
         }
     };
 
@@ -163,7 +114,6 @@ fn gen_struct_or_variant(
         gen_field(
             format!("{}_{}", path.clone(), ident_str),
             field.clone(),
-            i,
             out,
         );
     });
@@ -186,16 +136,12 @@ fn gen_struct_or_variant(
                 Span::call_site(),
             );
 
-            let (_, is_vec) = try_extract_inner_type(&field.ty, "Vec");
+            let mut skip_over = HashSet::new();
+            skip_over.insert("Spanned");
+            skip_over.insert("Box");
 
-            let expr = if is_vec {
-                syn::parse_quote! {
-                    #ident(Some(node), source)
-                }
-            } else {
-                syn::parse_quote! {
-                    #ident(node.child_by_field_name(#ident_str), source)
-                }
+            let expr = syn::parse_quote! {
+                #ident(node.child_by_field_name(#ident_str), source)
             };
 
             if field.ident.is_none() {
@@ -328,9 +274,9 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #enum_name {
                         #[allow(non_snake_case)]
-                        fn extract(node: rust_sitter::Node, source: &[u8]) -> Self {
+                        fn extract(node: Option<rust_sitter::Node>, source: &[u8], _vec_field_name: Option<&str>) -> Self {
+                            let node = node.unwrap();
                             #(#impl_body)*
-
                             match node.child(0).unwrap().kind() {
                                 #(#match_cases),*,
                                 _ => panic!()
@@ -365,7 +311,8 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #struct_name {
                         #[allow(non_snake_case)]
-                        fn extract(node: rust_sitter::Node, source: &[u8]) -> Self {
+                        fn extract(node: Option<rust_sitter::Node>, source: &[u8], _vec_field_name: Option<&str>) -> Self {
+                            let node = node.unwrap();
                             #(#impl_body)*
                             #extract_ident(node, source)
                         }
@@ -375,7 +322,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 vec![Item::Struct(s), extract_impl]
             }
 
-            _ => panic!(),
+            o => vec![o],
         })
         .collect();
 
@@ -410,7 +357,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
               Err(errors)
           } else {
               use rust_sitter::Extract;
-              Ok(#root_type::extract(root_node, input.as_bytes()))
+              Ok(rust_sitter::Extract::extract(Some(root_node), input.as_bytes(), None))
           }
       }
   });

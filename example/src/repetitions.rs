@@ -1,5 +1,7 @@
 #[rust_sitter::grammar("repetitions")]
 pub mod grammar {
+    use rust_sitter::Spanned;
+
     #[rust_sitter::language]
     #[derive(Debug)]
     #[allow(dead_code)]
@@ -9,7 +11,7 @@ pub mod grammar {
             #[rust_sitter::leaf(text = ",")]
             ()
         )]
-        numbers: Vec<Number>,
+        numbers: Spanned<Vec<Spanned<Number>>>,
     }
 
     #[derive(Debug)]
