@@ -1,6 +1,8 @@
 #[rust_sitter::grammar("optionals")]
 #[allow(dead_code)]
 mod grammar {
+    use rust_sitter::Spanned;
+
     #[rust_sitter::language]
     #[derive(Debug)]
     pub struct Language {
@@ -8,7 +10,7 @@ mod grammar {
         v: Option<i32>,
         #[rust_sitter::leaf(text = "_")]
         _s: (),
-        t: Option<Number>,
+        t: Spanned<Option<Number>>,
         #[rust_sitter::leaf(text = ".")]
         _d: Option<()>,
     }

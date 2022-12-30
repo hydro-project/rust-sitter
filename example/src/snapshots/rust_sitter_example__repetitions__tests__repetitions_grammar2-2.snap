@@ -10,19 +10,15 @@ Ok(
                     value: Number {
                         v: 1,
                     },
-                    span: Some(
-                        (
-                            0,
-                            1,
-                        ),
+                    span: (
+                        0,
+                        1,
                     ),
                 },
             ],
-            span: Some(
-                (
-                    0,
-                    1,
-                ),
+            span: (
+                0,
+                1,
             ),
         },
     },

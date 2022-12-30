@@ -6,7 +6,10 @@ Ok(
     NumberList {
         numbers: Spanned {
             value: [],
-            span: None,
+            span: (
+                0,
+                0,
+            ),
         },
     },
 )

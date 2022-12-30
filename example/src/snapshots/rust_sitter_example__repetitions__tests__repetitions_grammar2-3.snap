@@ -10,30 +10,24 @@ Ok(
                     value: Number {
                         v: 1,
                     },
-                    span: Some(
-                        (
-                            0,
-                            1,
-                        ),
+                    span: (
+                        0,
+                        1,
                     ),
                 },
                 Spanned {
                     value: Number {
                         v: 2,
                     },
-                    span: Some(
-                        (
-                            2,
-                            3,
-                        ),
+                    span: (
+                        2,
+                        3,
                     ),
                 },
             ],
-            span: Some(
-                (
-                    0,
-                    3,
-                ),
+            span: (
+                0,
+                3,
             ),
         },
     },

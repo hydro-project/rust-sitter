@@ -9,35 +9,148 @@ mod grammar {
     }
     impl rust_sitter::Extract for Expr {
         #[allow(non_snake_case)]
-        fn extract(node: Option<rust_sitter::Node>, source: &[u8]) -> Self {
+        fn extract(node: Option<rust_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
             let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
-            fn extract_Expr_Number_0(node: Option<rust_sitter::Node>, source: &[u8]) -> u32 {
+            fn extract_Expr_Number_0(
+                cursor_opt: &mut Option<rust_sitter::TreeCursor>,
+                source: &[u8],
+                last_idx: &mut usize,
+            ) -> u32 {
                 fn make_transform() -> impl Fn(&str) -> u32 {
                     |v| v.parse().unwrap()
                 }
-                make_transform()(node.and_then(|n| n.utf8_text(source).ok()).unwrap())
+                if let Some(cursor) = cursor_opt.as_mut() {
+                    loop {
+                        let n = cursor.node();
+                        if let Some(name) = cursor.field_name() {
+                            if name == "0" {
+                                let node: Option<rust_sitter::Node> = Some(n);
+                                let out = make_transform()(
+                                    node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
+                                );
+                                if !cursor.goto_next_sibling() {
+                                    *cursor_opt = None;
+                                };
+                                *last_idx = n.end_byte();
+                                return out;
+                            } else {
+                                let node: Option<rust_sitter::Node> = None;
+                                return make_transform()(
+                                    node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
+                                );
+                            }
+                        } else {
+                            *last_idx = n.end_byte();
+                        }
+                        if !cursor.goto_next_sibling() {
+                            let node: Option<rust_sitter::Node> = None;
+                            return make_transform()(
+                                node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
+                            );
+                        }
+                    }
+                } else {
+                    let node: Option<rust_sitter::Node> = None;
+                    return make_transform()(node.and_then(|n| n.utf8_text(source).ok()).unwrap());
+                }
             }
             #[allow(non_snake_case)]
             fn extract_Expr_Number(node: rust_sitter::Node, source: &[u8]) -> Expr {
-                Expr::Number(extract_Expr_Number_0(node.child_by_field_name("0"), source))
+                let mut last_idx = node.start_byte();
+                let mut parent_cursor = node.walk();
+                let mut cursor = if parent_cursor.goto_first_child() {
+                    Some(parent_cursor)
+                } else {
+                    None
+                };
+                Expr::Number(extract_Expr_Number_0(&mut cursor, source, &mut last_idx))
             }
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
-            fn extract_Expr_Neg__bang(node: Option<rust_sitter::Node>, source: &[u8]) -> () {
-                rust_sitter::Extract::extract(node, source)
+            fn extract_Expr_Neg__bang(
+                cursor_opt: &mut Option<rust_sitter::TreeCursor>,
+                source: &[u8],
+                last_idx: &mut usize,
+            ) -> () {
+                if let Some(cursor) = cursor_opt.as_mut() {
+                    loop {
+                        let n = cursor.node();
+                        if let Some(name) = cursor.field_name() {
+                            if name == "_bang" {
+                                let node: Option<rust_sitter::Node> = Some(n);
+                                let out = rust_sitter::Extract::extract(node, source, *last_idx);
+                                if !cursor.goto_next_sibling() {
+                                    *cursor_opt = None;
+                                };
+                                *last_idx = n.end_byte();
+                                return out;
+                            } else {
+                                let node: Option<rust_sitter::Node> = None;
+                                return rust_sitter::Extract::extract(node, source, *last_idx);
+                            }
+                        } else {
+                            *last_idx = n.end_byte();
+                        }
+                        if !cursor.goto_next_sibling() {
+                            let node: Option<rust_sitter::Node> = None;
+                            return rust_sitter::Extract::extract(node, source, *last_idx);
+                        }
+                    }
+                } else {
+                    let node: Option<rust_sitter::Node> = None;
+                    return rust_sitter::Extract::extract(node, source, *last_idx);
+                }
             }
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
-            fn extract_Expr_Neg_value(node: Option<rust_sitter::Node>, source: &[u8]) -> Box<Expr> {
-                rust_sitter::Extract::extract(node, source)
+            fn extract_Expr_Neg_value(
+                cursor_opt: &mut Option<rust_sitter::TreeCursor>,
+                source: &[u8],
+                last_idx: &mut usize,
+            ) -> Box<Expr> {
+                if let Some(cursor) = cursor_opt.as_mut() {
+                    loop {
+                        let n = cursor.node();
+                        if let Some(name) = cursor.field_name() {
+                            if name == "value" {
+                                let node: Option<rust_sitter::Node> = Some(n);
+                                let out = rust_sitter::Extract::extract(node, source, *last_idx);
+                                if !cursor.goto_next_sibling() {
+                                    *cursor_opt = None;
+                                };
+                                *last_idx = n.end_byte();
+                                return out;
+                            } else {
+                                let node: Option<rust_sitter::Node> = None;
+                                return rust_sitter::Extract::extract(node, source, *last_idx);
+                            }
+                        } else {
+                            *last_idx = n.end_byte();
+                        }
+                        if !cursor.goto_next_sibling() {
+                            let node: Option<rust_sitter::Node> = None;
+                            return rust_sitter::Extract::extract(node, source, *last_idx);
+                        }
+                    }
+                } else {
+                    let node: Option<rust_sitter::Node> = None;
+                    return rust_sitter::Extract::extract(node, source, *last_idx);
+                }
             }
             #[allow(non_snake_case)]
             fn extract_Expr_Neg(node: rust_sitter::Node, source: &[u8]) -> Expr {
+                let mut last_idx = node.start_byte();
+                let mut parent_cursor = node.walk();
+                let mut cursor = if parent_cursor.goto_first_child() {
+                    Some(parent_cursor)
+                } else {
+                    None
+                };
                 Expr::Neg {
-                    _bang: extract_Expr_Neg__bang(node.child_by_field_name("_bang"), source),
-                    value: extract_Expr_Neg_value(node.child_by_field_name("value"), source),
+                    _bang: extract_Expr_Neg__bang(&mut cursor, source, &mut last_idx),
+                    value: extract_Expr_Neg_value(&mut cursor, source, &mut last_idx),
                 }
             }
             match node.child(0).unwrap().kind() {
@@ -67,6 +180,7 @@ mod grammar {
             Ok(rust_sitter::Extract::extract(
                 Some(root_node),
                 input.as_bytes(),
+                0,
             ))
         }
     }

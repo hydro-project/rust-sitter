@@ -4,27 +4,27 @@ pub use tree_sitter::*;
 /// Defines the logic used to convert a node in a Tree Sitter tree to
 /// the corresponding Rust type.
 pub trait Extract {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8]) -> Self;
+    fn extract(node: Option<tree_sitter::Node>, source: &[u8], last_idx: usize) -> Self;
 }
 
 impl Extract for () {
-    fn extract(_node: Option<tree_sitter::Node>, _source: &[u8]) {}
+    fn extract(_node: Option<tree_sitter::Node>, _source: &[u8], _last_idx: usize) {}
 }
 
 impl<T: Extract> Extract for Option<T> {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8]) -> Option<T> {
-        node.map(|n| Extract::extract(Some(n), source))
+    fn extract(node: Option<tree_sitter::Node>, source: &[u8], last_idx: usize) -> Option<T> {
+        node.map(|n| Extract::extract(Some(n), source, last_idx))
     }
 }
 
 impl<T: Extract> Extract for Box<T> {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8]) -> Self {
-        Box::new(Extract::extract(node, source))
+    fn extract(node: Option<tree_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
+        Box::new(Extract::extract(node, source, last_idx))
     }
 }
 
 impl<T: Extract> Extract for Vec<T> {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8]) -> Self {
+    fn extract(node: Option<tree_sitter::Node>, source: &[u8], mut last_idx: usize) -> Self {
         node.map(|node| {
             let mut cursor = node.walk();
             let mut out = vec![];
@@ -32,8 +32,10 @@ impl<T: Extract> Extract for Vec<T> {
                 loop {
                     let n = cursor.node();
                     if cursor.field_name().is_some() {
-                        out.push(Extract::extract(Some(n), source));
+                        out.push(Extract::extract(Some(n), source, last_idx));
                     }
+
+                    last_idx = n.end_byte();
 
                     if !cursor.goto_next_sibling() {
                         break;
@@ -50,7 +52,7 @@ impl<T: Extract> Extract for Vec<T> {
 #[derive(Debug)]
 pub struct Spanned<T> {
     pub value: T,
-    pub span: Option<(usize, usize)>,
+    pub span: (usize, usize),
 }
 
 impl<T> AsRef<T> for Spanned<T> {
@@ -60,10 +62,12 @@ impl<T> AsRef<T> for Spanned<T> {
 }
 
 impl<T: Extract> Extract for Spanned<T> {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8]) -> Spanned<T> {
+    fn extract(node: Option<tree_sitter::Node>, source: &[u8], last_idx: usize) -> Spanned<T> {
         Spanned {
-            value: Extract::extract(node, source),
-            span: node.map(|n| (n.start_byte(), n.end_byte())),
+            value: Extract::extract(node, source, last_idx),
+            span: node
+                .map(|n| (n.start_byte(), n.end_byte()))
+                .unwrap_or((last_idx, last_idx)),
         }
     }
 }
