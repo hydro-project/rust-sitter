@@ -95,7 +95,7 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                 delimited_attr.and_then(|a| a.parse_args_with(FieldThenParams::parse).ok());
 
             let delimiter_json = delimited_params
-                .map(|p| gen_field(format!("{}_{}", path, "delimiter"), p.field, out));
+                .map(|p| gen_field(format!("{}_vec_delimiter", path), p.field, out));
 
             let repeat_attr = leaf
                 .attrs
@@ -118,14 +118,14 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
 
             let field_rule = json!({
                 "type": "FIELD",
-                "name": path,
+                "name": format!("{}_vec_element", path),
                 "content": {
                     "type": "SYMBOL",
                     "name": symbol_name,
                 }
             });
 
-            if let Some(delimiter_json) = delimiter_json {
+            let vec_contents = if let Some(delimiter_json) = delimiter_json {
                 let non_empty = json!({
                     "type": "SEQ",
                     "members": [
@@ -166,7 +166,15 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                     },
                     "content": field_rule
                 })
-            }
+            };
+
+            let contents_ident = format!("{}_vec_contents", path);
+            out.insert(contents_ident.clone(), vec_contents);
+
+            json!({
+                "type": "SYMBOL",
+                "name": contents_ident,
+            })
         } else {
             json!({
                 "type": "SYMBOL",
@@ -196,51 +204,32 @@ fn gen_struct_or_variant(
             skip_over.insert("Spanned");
             skip_over.insert("Box");
 
-            let (_, is_vec) = try_extract_inner_type(&field.ty, "Vec", &skip_over);
             let (_, is_option) = try_extract_inner_type(&field.ty, "Option", &skip_over);
 
             let field_contents = gen_field(
-                if is_vec {
-                    format!("{}_{}_vec_element", path.clone(), ident_str)
-                } else {
-                    format!("{}_{}", path.clone(), ident_str)
-                },
+                format!("{}_{}", path.clone(), ident_str),
                 field.clone(),
                 out,
             );
 
-            if is_vec {
-                let vec_symbol_name = format!("{}_{}_vec_contents", path.clone(), ident_str);
-                out.insert(vec_symbol_name.clone(), field_contents);
+            let core = json!({
+                "type": "FIELD",
+                "name": ident_str,
+                "content": field_contents
+            });
 
+            if is_option {
                 json!({
-                    "type": "FIELD",
-                    "name": ident_str,
-                    "content": {
-                        "type": "SYMBOL",
-                        "name": vec_symbol_name,
-                    }
+                    "type": "CHOICE",
+                    "members": [
+                        {
+                            "type": "BLANK"
+                        },
+                        core
+                    ]
                 })
             } else {
-                let core = json!({
-                    "type": "FIELD",
-                    "name": ident_str,
-                    "content": field_contents
-                });
-
-                if is_option {
-                    json!({
-                        "type": "CHOICE",
-                        "members": [
-                            {
-                                "type": "BLANK"
-                            },
-                            core
-                        ]
-                    })
-                } else {
-                    core
-                }
+                core
             }
         })
         .collect::<Vec<Value>>();
