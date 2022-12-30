@@ -4,7 +4,7 @@ use rust_sitter_common::*;
 use serde_json::{json, Map, Value};
 use syn::{parse::Parse, punctuated::Punctuated, *};
 
-fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
+fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> (Value, bool) {
     let leaf_type = leaf.ty;
 
     let leaf_attr = leaf
@@ -46,10 +46,13 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                 }),
             );
 
-            json!({
-                "type": "SYMBOL",
-                "name": path
-            })
+            (
+                json!({
+                    "type": "SYMBOL",
+                    "name": path
+                }),
+                is_option,
+            )
         } else {
             panic!("Expected string literal for pattern");
         }
@@ -63,10 +66,13 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                 }),
             );
 
-            json!({
-                "type": "SYMBOL",
-                "name": path
-            })
+            (
+                json!({
+                    "type": "SYMBOL",
+                    "name": path
+                }),
+                is_option,
+            )
         } else {
             panic!("Expected string literal for text");
         }
@@ -125,8 +131,22 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                 }
             });
 
-            let vec_contents = if let Some(delimiter_json) = delimiter_json {
-                let non_empty = json!({
+            let vec_contents = if let Some((delimiter_json, delimiter_optional)) = delimiter_json {
+                let delim_made_optional = if delimiter_optional {
+                    json!({
+                        "type": "CHOICE",
+                        "members": [
+                            {
+                                "type": "BLANK"
+                            },
+                            delimiter_json
+                        ]
+                    })
+                } else {
+                    delimiter_json
+                };
+
+                json!({
                     "type": "SEQ",
                     "members": [
                         field_rule,
@@ -135,35 +155,16 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
                             "content": {
                                 "type": "SEQ",
                                 "members": [
-                                    delimiter_json,
+                                    delim_made_optional,
                                     field_rule,
                                 ]
                             }
                         }
                     ]
-                });
-
-                if repeat_non_empty {
-                    non_empty
-                } else {
-                    json!({
-                        "type": "CHOICE",
-                        "members": [
-                            // optional
-                            {
-                                "type": "BLANK"
-                            },
-                            non_empty
-                        ]
-                    })
-                }
+                })
             } else {
                 json!({
-                    "type": if repeat_non_empty {
-                        "REPEAT1"
-                    } else {
-                        "REPEAT"
-                    },
+                    "type": "REPEAT1",
                     "content": field_rule
                 })
             };
@@ -171,15 +172,21 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> Value {
             let contents_ident = format!("{}_vec_contents", path);
             out.insert(contents_ident.clone(), vec_contents);
 
-            json!({
-                "type": "SYMBOL",
-                "name": contents_ident,
-            })
+            (
+                json!({
+                    "type": "SYMBOL",
+                    "name": contents_ident,
+                }),
+                !repeat_non_empty,
+            )
         } else {
-            json!({
-                "type": "SYMBOL",
-                "name": symbol_name,
-            })
+            (
+                json!({
+                    "type": "SYMBOL",
+                    "name": symbol_name,
+                }),
+                is_option,
+            )
         }
     }
 }
@@ -204,9 +211,7 @@ fn gen_struct_or_variant(
             skip_over.insert("Spanned");
             skip_over.insert("Box");
 
-            let (_, is_option) = try_extract_inner_type(&field.ty, "Option", &skip_over);
-
-            let field_contents = gen_field(
+            let (field_contents, is_option) = gen_field(
                 format!("{}_{}", path.clone(), ident_str),
                 field.clone(),
                 out,

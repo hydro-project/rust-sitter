@@ -98,7 +98,9 @@ mod tests {
             panic!()
         };
 
-        insta::assert_display_snapshot!(generate_grammar(&m));
+        let grammar = generate_grammar(&m);
+        insta::assert_display_snapshot!(grammar);
+        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -120,7 +122,9 @@ mod tests {
             panic!()
         };
 
-        insta::assert_display_snapshot!(generate_grammar(&m));
+        let grammar = generate_grammar(&m);
+        insta::assert_display_snapshot!(grammar);
+        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -147,7 +151,9 @@ mod tests {
             panic!()
         };
 
-        insta::assert_display_snapshot!(generate_grammar(&m));
+        let grammar = generate_grammar(&m);
+        insta::assert_display_snapshot!(grammar);
+        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -176,7 +182,9 @@ mod tests {
             panic!()
         };
 
-        insta::assert_display_snapshot!(generate_grammar(&m));
+        let grammar = generate_grammar(&m);
+        insta::assert_display_snapshot!(grammar);
+        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -204,7 +212,9 @@ mod tests {
             panic!()
         };
 
-        insta::assert_display_snapshot!(generate_grammar(&m));
+        let grammar = generate_grammar(&m);
+        insta::assert_display_snapshot!(grammar);
+        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -230,7 +240,9 @@ mod tests {
             panic!()
         };
 
-        insta::assert_display_snapshot!(generate_grammar(&m));
+        let grammar = generate_grammar(&m);
+        insta::assert_display_snapshot!(grammar);
+        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -264,7 +276,41 @@ mod tests {
             panic!()
         };
 
-        insta::assert_display_snapshot!(generate_grammar(&m));
+        let grammar = generate_grammar(&m);
+        insta::assert_display_snapshot!(grammar);
+        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+    }
+
+    #[test]
+    fn grammar_repeat_no_delimiter() {
+        let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
+            pub mod grammar {
+                #[rust_sitter::language]
+                pub struct NumberList {
+                    numbers: Vec<Number>,
+                }
+
+                pub struct Number {
+                    #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+                    v: i32,
+                }
+
+                #[rust_sitter::extra]
+                struct Whitespace {
+                    #[rust_sitter::leaf(pattern = r"\s")]
+                    _whitespace: (),
+                }
+            }
+        } {
+            m
+        } else {
+            panic!()
+        };
+
+        let grammar = generate_grammar(&m);
+        insta::assert_display_snapshot!(grammar);
+        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -299,7 +345,9 @@ mod tests {
             panic!()
         };
 
-        insta::assert_display_snapshot!(generate_grammar(&m));
+        let grammar = generate_grammar(&m);
+        insta::assert_display_snapshot!(grammar);
+        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -311,6 +359,8 @@ mod tests {
                 pub struct Language {
                     #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
                     v: Option<i32>,
+                    #[rust_sitter::leaf(pattern = r" ", transform = |v| ())]
+                    space: (),
                     t: Option<Number>,
                 }
 
@@ -325,7 +375,9 @@ mod tests {
             panic!()
         };
 
-        insta::assert_display_snapshot!(generate_grammar(&m));
+        let grammar = generate_grammar(&m);
+        insta::assert_display_snapshot!(grammar);
+        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -352,7 +404,9 @@ mod tests {
             panic!()
         };
 
-        insta::assert_display_snapshot!(generate_grammar(&m));
+        let grammar = generate_grammar(&m);
+        insta::assert_display_snapshot!(grammar);
+        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -384,6 +438,8 @@ mod tests {
             panic!()
         };
 
-        insta::assert_display_snapshot!(generate_grammar(&m));
+        let grammar = generate_grammar(&m);
+        insta::assert_display_snapshot!(grammar);
+        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 }

@@ -41,19 +41,26 @@ impl<T: Extract> Extract for Vec<T> {
         source: &[u8],
         vec_field_name: Option<&str>,
     ) -> Self {
-        let node = node.unwrap();
-        let mut cursor = node.walk();
-        node.children_by_field_name(vec_field_name.unwrap(), &mut cursor)
-            .map(|n| Extract::extract(Some(n), source, None))
-            .collect::<Vec<_>>()
+        node.map(|node| {
+            let mut cursor = node.walk();
+            node.children_by_field_name(vec_field_name.unwrap(), &mut cursor)
+                .map(|n| Extract::extract(Some(n), source, None))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default()
     }
 }
 
 #[derive(Debug)]
 pub struct Spanned<T> {
     pub value: T,
-    pub start: usize,
-    pub end: usize,
+    pub span: Option<(usize, usize)>,
+}
+
+impl<T> AsRef<T> for Spanned<T> {
+    fn as_ref(&self) -> &T {
+        &self.value
+    }
 }
 
 impl<T: Extract> Extract for Spanned<T> {
@@ -64,8 +71,7 @@ impl<T: Extract> Extract for Spanned<T> {
     ) -> Spanned<T> {
         Spanned {
             value: Extract::extract(node, source, vec_field_name),
-            start: node.unwrap().start_byte(),
-            end: node.unwrap().end_byte(),
+            span: node.map(|n| (n.start_byte(), n.end_byte())),
         }
     }
 }

@@ -1,0 +1,12 @@
+---
+source: example/src/repetitions.rs
+expression: "grammar2::parse(\"\")"
+---
+Ok(
+    NumberList {
+        numbers: Spanned {
+            value: [],
+            span: None,
+        },
+    },
+)

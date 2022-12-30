@@ -1,6 +1,6 @@
 ---
 source: example/src/repetitions.rs
-expression: "grammar::parse(\"1\")"
+expression: "grammar2::parse(\"1\")"
 ---
 Ok(
     NumberList {

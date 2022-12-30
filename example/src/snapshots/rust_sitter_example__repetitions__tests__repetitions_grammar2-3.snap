@@ -1,6 +1,6 @@
 ---
 source: example/src/repetitions.rs
-expression: "grammar::parse(\"1\")"
+expression: "grammar2::parse(\"1 2\")"
 ---
 Ok(
     NumberList {
@@ -17,11 +17,22 @@ Ok(
                         ),
                     ),
                 },
+                Spanned {
+                    value: Number {
+                        v: 2,
+                    },
+                    span: Some(
+                        (
+                            2,
+                            3,
+                        ),
+                    ),
+                },
             ],
             span: Some(
                 (
                     0,
-                    1,
+                    3,
                 ),
             ),
         },
