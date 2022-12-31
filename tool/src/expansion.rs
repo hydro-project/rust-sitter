@@ -4,11 +4,15 @@ use rust_sitter_common::*;
 use serde_json::{json, Map, Value};
 use syn::{parse::Parse, punctuated::Punctuated, *};
 
-fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> (Value, bool) {
-    let leaf_type = leaf.ty;
+fn gen_field(
+    path: String,
+    leaf_type: Type,
+    leaf_attrs: Vec<Attribute>,
+    out: &mut Map<String, Value>,
+) -> (Value, bool) {
+    // let leaf_type = leaf.ty;
 
-    let leaf_attr = leaf
-        .attrs
+    let leaf_attr = leaf_attrs
         .iter()
         .find(|attr| attr.path == syn::parse_quote!(rust_sitter::leaf));
 
@@ -33,8 +37,8 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> (Value,
     skip_over.insert("Spanned");
     skip_over.insert("Box");
 
-    let (inner_type, is_vec) = try_extract_inner_type(&leaf_type, "Vec", &skip_over);
-    let (inner_type, is_option) = try_extract_inner_type(&inner_type, "Option", &skip_over);
+    let (inner_type_vec, is_vec) = try_extract_inner_type(&leaf_type, "Vec", &skip_over);
+    let (inner_type_option, is_option) = try_extract_inner_type(&leaf_type, "Option", &skip_over);
 
     if let Some(Expr::Lit(lit)) = pattern_param {
         if let Lit::Str(s) = &lit.lit {
@@ -76,8 +80,8 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> (Value,
         } else {
             panic!("Expected string literal for text");
         }
-    } else {
-        let symbol_name = if let Type::Path(p) = filter_inner_type(&inner_type, &skip_over) {
+    } else if !is_vec && !is_option {
+        let symbol_name = if let Type::Path(p) = filter_inner_type(&leaf_type, &skip_over) {
             if p.path.segments.len() == 1 {
                 p.path.segments[0].ident.to_string()
             } else {
@@ -87,107 +91,131 @@ fn gen_field(path: String, leaf: Field, out: &mut Map<String, Value>) -> (Value,
             panic!("Expected a path");
         };
 
-        if is_vec {
-            if is_option {
-                panic!("Vec<Option<_>> is not supported");
-            }
+        (
+            json!({
+                "type": "SYMBOL",
+                "name": symbol_name,
+            }),
+            false,
+        )
+    } else if is_vec {
+        let (field_json, field_optional) = gen_field(path.clone(), inner_type_vec, vec![], out);
 
-            let delimited_attr = leaf
-                .attrs
-                .iter()
-                .find(|attr| attr.path == syn::parse_quote!(rust_sitter::delimited));
+        let delimited_attr = leaf_attrs
+            .iter()
+            .find(|attr| attr.path == syn::parse_quote!(rust_sitter::delimited));
 
-            let delimited_params =
-                delimited_attr.and_then(|a| a.parse_args_with(FieldThenParams::parse).ok());
+        let delimited_params =
+            delimited_attr.and_then(|a| a.parse_args_with(FieldThenParams::parse).ok());
 
-            let delimiter_json = delimited_params
-                .map(|p| gen_field(format!("{}_vec_delimiter", path), p.field, out));
+        let delimiter_json = delimited_params.map(|p| {
+            gen_field(
+                format!("{}_vec_delimiter", path),
+                p.field.ty,
+                p.field.attrs,
+                out,
+            )
+        });
 
-            let repeat_attr = leaf
-                .attrs
-                .iter()
-                .find(|attr| attr.path == syn::parse_quote!(rust_sitter::repeat));
+        let repeat_attr = leaf_attrs
+            .iter()
+            .find(|attr| attr.path == syn::parse_quote!(rust_sitter::repeat));
 
-            let repeat_params = repeat_attr.and_then(|a| {
-                a.parse_args_with(Punctuated::<NameValueExpr, Token![,]>::parse_terminated)
-                    .ok()
-            });
+        let repeat_params = repeat_attr.and_then(|a| {
+            a.parse_args_with(Punctuated::<NameValueExpr, Token![,]>::parse_terminated)
+                .ok()
+        });
 
-            let repeat_non_empty = repeat_params
-                .and_then(|p| {
-                    p.iter()
-                        .find(|param| param.path == "non_empty")
-                        .map(|p| p.expr.clone())
-                })
-                .map(|e| e == syn::parse_quote!(true))
-                .unwrap_or(false);
+        let repeat_non_empty = repeat_params
+            .and_then(|p| {
+                p.iter()
+                    .find(|param| param.path == "non_empty")
+                    .map(|p| p.expr.clone())
+            })
+            .map(|e| e == syn::parse_quote!(true))
+            .unwrap_or(false);
 
-            let field_rule = json!({
-                "type": "FIELD",
-                "name": format!("{}_vec_element", path),
-                "content": {
-                    "type": "SYMBOL",
-                    "name": symbol_name,
-                }
-            });
+        let field_rule_non_optional = json!({
+            "type": "FIELD",
+            "name": format!("{}_vec_element", path),
+            "content": field_json
+        });
 
-            let vec_contents = if let Some((delimiter_json, delimiter_optional)) = delimiter_json {
-                let delim_made_optional = if delimiter_optional {
-                    json!({
-                        "type": "CHOICE",
-                        "members": [
-                            {
-                                "type": "BLANK"
-                            },
-                            delimiter_json
-                        ]
-                    })
-                } else {
-                    delimiter_json
-                };
+        let field_rule = if field_optional {
+            json!({
+                "type": "CHOICE",
+                "members": [
+                    {
+                        "type": "BLANK"
+                    },
+                    field_rule_non_optional
+                ]
+            })
+        } else {
+            field_rule_non_optional
+        };
 
+        let vec_contents = if let Some((delimiter_json, delimiter_optional)) = delimiter_json {
+            let delim_made_optional = if delimiter_optional {
                 json!({
-                    "type": "SEQ",
+                    "type": "CHOICE",
                     "members": [
-                        field_rule,
                         {
-                            "type": "REPEAT",
-                            "content": {
-                                "type": "SEQ",
-                                "members": [
-                                    delim_made_optional,
-                                    field_rule,
-                                ]
-                            }
-                        }
+                            "type": "BLANK"
+                        },
+                        delimiter_json
                     ]
                 })
             } else {
-                json!({
-                    "type": "REPEAT1",
-                    "content": field_rule
-                })
+                delimiter_json
             };
 
-            let contents_ident = format!("{}_vec_contents", path);
-            out.insert(contents_ident.clone(), vec_contents);
-
-            (
-                json!({
-                    "type": "SYMBOL",
-                    "name": contents_ident,
-                }),
-                !repeat_non_empty,
-            )
+            json!({
+                "type": "SEQ",
+                "members": [
+                    field_rule,
+                    {
+                        "type": if field_optional {
+                            "REPEAT1"
+                        } else {
+                            "REPEAT"
+                        },
+                        "content": {
+                            "type": "SEQ",
+                            "members": [
+                                delim_made_optional,
+                                field_rule,
+                            ]
+                        }
+                    }
+                ]
+            })
         } else {
-            (
-                json!({
-                    "type": "SYMBOL",
-                    "name": symbol_name,
-                }),
-                is_option,
-            )
+            json!({
+                "type": "REPEAT1",
+                "content": field_rule
+            })
+        };
+
+        let contents_ident = format!("{}_vec_contents", path);
+        out.insert(contents_ident.clone(), vec_contents);
+
+        (
+            json!({
+                "type": "SYMBOL",
+                "name": contents_ident,
+            }),
+            !repeat_non_empty,
+        )
+    } else {
+        // is_option
+        let (field_json, field_optional) = gen_field(path, inner_type_option, vec![], out);
+
+        if field_optional {
+            panic!("Option<Option<_>> is not supported");
         }
+
+        (field_json, true)
     }
 }
 
@@ -213,7 +241,8 @@ fn gen_struct_or_variant(
 
             let (field_contents, is_option) = gen_field(
                 format!("{}_{}", path.clone(), ident_str),
-                field.clone(),
+                field.ty.clone(),
+                field.attrs.clone(),
                 out,
             );
 
