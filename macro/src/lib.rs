@@ -90,7 +90,7 @@ pub fn delimited(
 }
 
 #[proc_macro_attribute]
-/// On `Vec<_>` typed fields, specifies additional configure for how the repeated elements should
+/// On `Vec<_>` typed fields, specifies additional config for how the repeated elements should
 /// be parsed. In particular, this annotation takes the following named arguments:
 /// - `non_empty` - if this argument is `true`, then there must be at least one element parsed
 ///

@@ -49,9 +49,13 @@ impl<T: Extract> Extract for Vec<T> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
+/// A wrapper around a value that also contains the span of the value in the source.
 pub struct Spanned<T> {
+    /// The underlying parsed node.
     pub value: T,
+    /// The span of the node in the source. The first value is the inclusive start
+    /// of the span, and the second value is the exclusive end of the span.
     pub span: (usize, usize),
 }
 

@@ -209,7 +209,7 @@ fn gen_field(
         )
     } else {
         // is_option
-        let (field_json, field_optional) = gen_field(path, inner_type_option, vec![], out);
+        let (field_json, field_optional) = gen_field(path, inner_type_option, leaf_attrs, out);
 
         if field_optional {
             panic!("Option<Option<_>> is not supported");

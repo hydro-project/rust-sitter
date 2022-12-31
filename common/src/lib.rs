@@ -54,7 +54,7 @@ pub fn try_extract_inner_type(
     skip_over: &HashSet<&str>,
 ) -> (Type, bool) {
     if let Type::Path(p) = &ty {
-        let type_segment = p.path.segments.first().unwrap();
+        let type_segment = p.path.segments.last().unwrap();
         if type_segment.ident == inner_of {
             let leaf_type = if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
                 if let GenericArgument::Type(t) = p.args.first().unwrap().clone() {
@@ -87,7 +87,7 @@ pub fn try_extract_inner_type(
 
 pub fn filter_inner_type(ty: &Type, skip_over: &HashSet<&str>) -> Type {
     if let Type::Path(p) = &ty {
-        let type_segment = p.path.segments.first().unwrap();
+        let type_segment = p.path.segments.last().unwrap();
         if skip_over.contains(type_segment.ident.to_string().as_str()) {
             if let PathArguments::AngleBracketed(p) = &type_segment.arguments {
                 if let GenericArgument::Type(t) = p.args.first().unwrap().clone() {
