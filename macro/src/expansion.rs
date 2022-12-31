@@ -52,18 +52,19 @@ fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) 
     skip_over.insert("Spanned");
     skip_over.insert("Box");
 
-    let (inner_type, is_vec) = try_extract_inner_type(&leaf_type, "Vec", &skip_over);
-    let (inner_type, is_option) = try_extract_inner_type(&inner_type, "Option", &skip_over);
-
     let (leaf_stmts, leaf_expr): (Vec<Stmt>, Expr) = match transform_param {
         Some(closure) => {
+            let (_, is_vec) = try_extract_inner_type(&leaf_type, "Vec", &skip_over);
+            let (inner_type_option, is_option) =
+                try_extract_inner_type(&leaf_type, "Option", &skip_over);
+
             if is_vec {
                 panic!("Vec or Spanned of leaves is not supported");
             }
 
             (
                 vec![syn::parse_quote! {
-                    fn make_transform() -> impl Fn(&str) -> #inner_type {
+                    fn make_transform() -> impl Fn(&str) -> #inner_type_option {
                         #closure
                     }
                 }],

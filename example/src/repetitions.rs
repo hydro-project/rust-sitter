@@ -53,6 +53,35 @@ pub mod grammar2 {
     }
 }
 
+#[rust_sitter::grammar("repetitions_optional_elem")]
+pub mod grammar3 {
+    use rust_sitter::Spanned;
+
+    #[rust_sitter::language]
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    pub struct NumberList {
+        #[rust_sitter::delimited(
+            #[rust_sitter::leaf(text = ",")]
+            ()
+        )]
+        numbers: Spanned<Vec<Spanned<Option<Number>>>>,
+    }
+
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    pub struct Number {
+        #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+        v: i32,
+    }
+
+    #[rust_sitter::extra]
+    struct Whitespace {
+        #[rust_sitter::leaf(pattern = r"\s")]
+        _whitespace: (),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -69,5 +98,14 @@ mod tests {
         insta::assert_debug_snapshot!(grammar2::parse(""));
         insta::assert_debug_snapshot!(grammar2::parse("1"));
         insta::assert_debug_snapshot!(grammar2::parse("1 2"));
+    }
+
+    #[test]
+    fn repetitions_grammar3() {
+        insta::assert_debug_snapshot!(grammar3::parse(""));
+        insta::assert_debug_snapshot!(grammar3::parse("1,"));
+        insta::assert_debug_snapshot!(grammar3::parse("1, 2"));
+        insta::assert_debug_snapshot!(grammar3::parse("1,, 2"));
+        insta::assert_debug_snapshot!(grammar3::parse("1,, 2,"));
     }
 }
