@@ -115,6 +115,21 @@ grammar::parse("1+2+3") = Ok(Add(
 */
 ```
 
+## Field Annotations
+Rust Sitter supports a number of annotations that can be applied to fields in your grammar. These annotations can be used to control how the parser behaves, and how the resulting AST is constructed.
+
+### `#[rust_sitter::leaf(...)]`
+The `#[rust_sitter::leaf(...)]` annotation can be used to define a leaf node in the AST. This annotation takes a number of parameters that control how the parser behaves:
+- the `pattern` parameter takes a regular expression that is used to match the text of the leaf node. This parameter is required.
+- the `text` parameter takes a string that is used to match the text of the leaf node. This parameter is mutually exclusive with `pattern`.
+- the `transform` parameter takes a function that is used to transform the matched text (an `&str`) into the desired type. This parameter is optional if the target type is `()`.
+
+### `#[rust_sitter::prec_left(...)]` / `#[rust_sitter::prec_right(...)]`
+This annotation can be used to define a left/right-associative operator. This annotation takes a single parameter, which is the precedence level of the operator (higher binds more tightly).
+
+### `#[rust_sitter::skip(...)]`
+This annotation can be used to define a field that does not correspond to anything in the input string, such as some metadata. This annotation takes a single parameter, which is the value that should be used to populate that field at runtime.
+
 ## Special Types
 Rust Sitter has a few special types that can be used to define more complex grammars.
 

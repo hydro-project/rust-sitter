@@ -140,12 +140,19 @@ fn gen_struct_or_variant(
             .as_ref()
             .map(|v| v.to_string())
             .unwrap_or(format!("{}", i));
-        gen_field(
-            format!("{}_{}", path.clone(), ident_str),
-            ident_str,
-            field.clone(),
-            out,
-        );
+
+        if !field
+            .attrs
+            .iter()
+            .any(|attr| attr.path == syn::parse_quote!(rust_sitter::skip))
+        {
+            gen_field(
+                format!("{}_{}", path.clone(), ident_str),
+                ident_str,
+                field.clone(),
+                out,
+            );
+        }
     });
 
     let extract_ident = Ident::new(&format!("extract_{}", path), Span::call_site());
@@ -156,22 +163,27 @@ fn gen_struct_or_variant(
         .iter()
         .enumerate()
         .map(|(i, field)| {
-            let ident_str = field
-                .ident
-                .as_ref()
-                .map(|v| v.to_string())
-                .unwrap_or(format!("{}", i));
-            let ident = Ident::new(
-                &format!("extract_{}_{}", path.clone(), ident_str),
-                Span::call_site(),
-            );
+            let expr = if let Some(skip_attrs) = field
+                .attrs
+                .iter()
+                .find(|attr| attr.path == syn::parse_quote!(rust_sitter::skip))
+            {
+                skip_attrs.parse_args::<syn::Expr>().unwrap()
+            } else {
+                let ident_str = field
+                    .ident
+                    .as_ref()
+                    .map(|v| v.to_string())
+                    .unwrap_or(format!("{}", i));
 
-            let mut skip_over = HashSet::new();
-            skip_over.insert("Spanned");
-            skip_over.insert("Box");
+                let ident = Ident::new(
+                    &format!("extract_{}_{}", path.clone(), ident_str),
+                    Span::call_site(),
+                );
 
-            let expr = syn::parse_quote! {
-                #ident(&mut cursor, source, &mut last_idx)
+                syn::parse_quote! {
+                    #ident(&mut cursor, source, &mut last_idx)
+                }
             };
 
             if field.ident.is_none() {
