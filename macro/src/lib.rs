@@ -46,6 +46,26 @@ pub fn leaf(
 }
 
 #[proc_macro_attribute]
+/// Defines a field that does not correspond to anything in the input string,
+/// such as some metadata. Takes a single, unnamed argument, which is the value
+/// used to populate the field at runtime.
+///
+/// ## Example
+/// ```ignore
+/// struct MyNode {
+///    ...,
+///    #[rust_sitter::skip(false)]
+///    node_visited: bool
+/// }
+/// ```
+pub fn skip(
+    _attr: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    item
+}
+
+#[proc_macro_attribute]
 /// Defines a precedence level for a non-terminal that should be left-associative.
 /// For example, with subtraction we expect 1 - 2 - 3 to be parsed as (1 - 2) - 3,
 /// which corresponds to a left-associativity.

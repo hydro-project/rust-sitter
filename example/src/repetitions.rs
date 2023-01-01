@@ -66,6 +66,8 @@ pub mod grammar3 {
             ()
         )]
         numbers: Spanned<Vec<Spanned<Option<Number>>>>,
+        #[rust_sitter::skip(123)]
+        metadata: u32,
     }
 
     #[derive(Debug)]

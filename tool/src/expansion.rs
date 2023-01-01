@@ -10,8 +10,6 @@ fn gen_field(
     leaf_attrs: Vec<Attribute>,
     out: &mut Map<String, Value>,
 ) -> (Value, bool) {
-    // let leaf_type = leaf.ty;
-
     let leaf_attr = leaf_attrs
         .iter()
         .find(|attr| attr.path == syn::parse_quote!(rust_sitter::leaf));
@@ -228,42 +226,46 @@ fn gen_struct_or_variant(
     let children = fields
         .iter()
         .enumerate()
-        .map(|(i, field)| {
-            let ident_str = field
-                .ident
-                .as_ref()
-                .map(|v| v.to_string())
-                .unwrap_or(format!("{}", i));
-
-            let mut skip_over = HashSet::new();
-            skip_over.insert("Spanned");
-            skip_over.insert("Box");
-
-            let (field_contents, is_option) = gen_field(
-                format!("{}_{}", path.clone(), ident_str),
-                field.ty.clone(),
-                field.attrs.clone(),
-                out,
-            );
-
-            let core = json!({
-                "type": "FIELD",
-                "name": ident_str,
-                "content": field_contents
-            });
-
-            if is_option {
-                json!({
-                    "type": "CHOICE",
-                    "members": [
-                        {
-                            "type": "BLANK"
-                        },
-                        core
-                    ]
-                })
+        .filter_map(|(i, field)| {
+            if field
+                .attrs
+                .iter()
+                .any(|attr| attr.path == syn::parse_quote!(rust_sitter::skip))
+            {
+                None
             } else {
-                core
+                let ident_str = field
+                    .ident
+                    .as_ref()
+                    .map(|v| v.to_string())
+                    .unwrap_or(format!("{}", i));
+
+                let (field_contents, is_option) = gen_field(
+                    format!("{}_{}", path.clone(), ident_str),
+                    field.ty.clone(),
+                    field.attrs.clone(),
+                    out,
+                );
+
+                let core = json!({
+                    "type": "FIELD",
+                    "name": ident_str,
+                    "content": field_contents
+                });
+
+                if is_option {
+                    Some(json!({
+                        "type": "CHOICE",
+                        "members": [
+                            {
+                                "type": "BLANK"
+                            },
+                            core
+                        ]
+                    }))
+                } else {
+                    Some(core)
+                }
             }
         })
         .collect::<Vec<Value>>();
