@@ -5,10 +5,10 @@ Rust Sitter makes it easy to create efficient parsers in Rust by leveraging the 
 First, add Rust/Tree Sitter to your `Cargo.toml`:
 ```toml
 [dependencies]
-rust-sitter = "0.1.2"
+rust-sitter = "0.2.0"
 
 [build-dependencies]
-rust-sitter-tool = "0.1.2"
+rust-sitter-tool = "0.2.0"
 ```
 
 The first step is to configure your `build.rs` to compile and link the generated Tree Sitter parser:

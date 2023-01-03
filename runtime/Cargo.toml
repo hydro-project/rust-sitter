@@ -3,7 +3,7 @@ name = "rust-sitter"
 description = "A package for defining tree-sitter grammars alongside Rust logic"
 readme = "../README.md"
 repository = "https://github.com/hydro-project/rust-sitter"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["Shadaj Laddad <shadaj@users.noreply.github.com>"]
 edition = "2021"
 license = "MIT"
@@ -15,7 +15,7 @@ path = "src/lib.rs"
 
 [dependencies]
 tree-sitter = "0.20.6"
-rust-sitter-macro = { version = "0.1.0", path = "../macro" }
+rust-sitter-macro = { version = "0.2.0", path = "../macro" }
 
 [dev-dependencies]
 insta = "1.7.1"
