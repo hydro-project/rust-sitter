@@ -14,7 +14,7 @@ categories = ["development-tools"]
 path = "src/lib.rs"
 
 [dependencies]
-tree-sitter = "0.20.6"
+tree-sitter = { git = "https://github.com/Luni-4/tree-sitter", branch = "rust-core2" }
 rust-sitter-macro = { version = "0.2.0", path = "../macro" }
 
 [dev-dependencies]
