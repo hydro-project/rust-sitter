@@ -5,13 +5,18 @@ authors = ["Shadaj Laddad <shadaj@users.noreply.github.com>"]
 edition = "2021"
 publish = false
 
+[features]
+default = ["tree-sitter-standard"]
+tree-sitter-standard = ["rust-sitter/tree-sitter-standard", "rust-sitter-tool/build-parsers-standard"]
+tree-sitter-c2rust = ["rust-sitter/tree-sitter-c2rust", "rust-sitter-tool/build-parsers-c2rust"]
+
 [dependencies]
-rust-sitter = { path = "../runtime" }
+rust-sitter = { path = "../runtime", default-features = false }
 codemap = "0.1.3"
 codemap-diagnostic = "0.1.1"
 
 [build-dependencies]
-rust-sitter-tool = { path = "../tool" }
+rust-sitter-tool = { path = "../tool", default-features = false }
 
 [dev-dependencies]
 insta = "1.7.1"

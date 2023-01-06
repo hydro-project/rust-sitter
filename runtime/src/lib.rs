@@ -118,7 +118,11 @@ pub mod errors {
 
     /// Given the root node of a Tree Sitter parsing result, accumulates all
     /// errors that were emitted.
-    pub fn collect_parsing_errors(node: &tree_sitter::Node, source: &[u8], errors: &mut Vec<ParseError>) {
+    pub fn collect_parsing_errors(
+        node: &tree_sitter::Node,
+        source: &[u8],
+        errors: &mut Vec<ParseError>,
+    ) {
         if node.is_error() {
             if node.child(0).is_some() {
                 // we managed to parse some children, so collect underlying errors for this node

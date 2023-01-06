@@ -75,18 +75,16 @@ pub fn build_parsers(root_file: &Path) {
         let sysroot_dir = dir.path().join("sysroot");
         if env::var("TARGET").unwrap() == "wasm32-unknown-unknown" {
             std::fs::create_dir(&sysroot_dir).unwrap();
-            let mut stdio = std::fs::File::create(sysroot_dir.join("stdio.h"))
+            let mut stdint = std::fs::File::create(sysroot_dir.join("stdint.h")).unwrap();
+            stdint
+                .write_all(include_bytes!("wasm-sysroot/stdint.h"))
                 .unwrap();
-            drop(stdio);
-
-            let mut stdint = std::fs::File::create(sysroot_dir.join("stdint.h"))
-                .unwrap();
-            stdint.write_all(include_bytes!("wasm-sysroot/stdint.h")).unwrap();
             drop(stdint);
 
-            let mut stdlib = std::fs::File::create(sysroot_dir.join("stdlib.h"))
+            let mut stdlib = std::fs::File::create(sysroot_dir.join("stdlib.h")).unwrap();
+            stdlib
+                .write_all(include_bytes!("wasm-sysroot/stdlib.h"))
                 .unwrap();
-            stdlib.write_all(include_bytes!("wasm-sysroot/stdlib.h")).unwrap();
             drop(stdlib);
         }
 
