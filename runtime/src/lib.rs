@@ -1,5 +1,16 @@
 pub use rust_sitter_macro::*;
-pub use tree_sitter::*;
+
+#[cfg(feature = "tree-sitter-standard")]
+pub use tree_sitter_runtime_standard::*;
+
+#[cfg(feature = "tree-sitter-standard")]
+use tree_sitter_runtime_standard as tree_sitter;
+
+#[cfg(feature = "tree-sitter-c2rust")]
+pub use tree_sitter_runtime_c2rust::*;
+
+#[cfg(feature = "tree-sitter-c2rust")]
+use tree_sitter_runtime_c2rust as tree_sitter;
 
 /// Defines the logic used to convert a node in a Tree Sitter tree to
 /// the corresponding Rust type.
@@ -77,6 +88,12 @@ impl<T: Extract> Extract for Spanned<T> {
 }
 
 pub mod errors {
+    #[cfg(feature = "tree-sitter-standard")]
+    use tree_sitter_runtime_standard as tree_sitter;
+
+    #[cfg(feature = "tree-sitter-c2rust")]
+    use tree_sitter_runtime_c2rust as tree_sitter;
+
     #[derive(Debug)]
     /// An explanation for an error that occurred during parsing.
     pub enum ParseErrorReason {

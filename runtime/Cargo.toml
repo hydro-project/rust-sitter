@@ -13,8 +13,14 @@ categories = ["development-tools"]
 [lib]
 path = "src/lib.rs"
 
+[features]
+default = ["tree-sitter-standard"]
+tree-sitter-standard = ["tree-sitter-runtime-standard"]
+tree-sitter-c2rust = ["tree-sitter-runtime-c2rust"]
+
 [dependencies]
-tree-sitter = { git = "https://github.com/Luni-4/tree-sitter", branch = "rust-core2" }
+tree-sitter-runtime-standard = { package = "tree-sitter", version = "0.20.6", optional = true }
+tree-sitter-runtime-c2rust = { package = "tree-sitter", git = "https://github.com/shadaj/tree-sitter-wasm-c2rust", branch = "wasm", optional = true }
 rust-sitter-macro = { version = "0.2.0", path = "../macro" }
 
 [dev-dependencies]

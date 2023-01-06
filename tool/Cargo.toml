@@ -11,8 +11,10 @@ keywords = ["parsing", "codegen"]
 categories = ["development-tools"]
 
 [features]
-default = ["build_parsers"]
-build_parsers = ["dep:tempfile", "dep:tree-sitter", "dep:tree-sitter-cli", "dep:cc"]
+default = ["build-parsers-standard"]
+build-parsers-standard = ["tree-sitter-runtime-standard", "tree-sitter-cli-standard", "build-parsers-common"]
+build-parsers-c2rust = ["tree-sitter-runtime-c2rust", "tree-sitter-cli-c2rust", "build-parsers-common"]
+build-parsers-common = ["dep:tempfile", "dep:cc"]
 
 [dependencies]
 syn = { version = "1.0", features = [ "full", "extra-traits" ] }
@@ -22,9 +24,13 @@ serde_json = { version = "1", features = ["preserve_order"] }
 rust-sitter-common = { version = "0.2.0", path = "../common" }
 
 tempfile = { version = "3.0.0", optional = true }
-tree-sitter = { version = "0.20.6", optional = true }
-tree-sitter-cli = { version = "0.20.6", optional = true }
 cc = { version = "1.0.73", optional = true }
+
+tree-sitter-runtime-standard = { package = "tree-sitter", version = "0.20.6", optional = true }
+tree-sitter-runtime-c2rust = { package = "tree-sitter", git = "https://github.com/shadaj/tree-sitter-wasm-c2rust", branch = "wasm", optional = true }
+
+tree-sitter-cli-standard = { package = "tree-sitter-cli", version = "0.20.6", optional = true }
+tree-sitter-cli-c2rust = { package = "tree-sitter-cli", git = "https://github.com/shadaj/tree-sitter-wasm-c2rust", branch = "wasm", optional = true }
 
 [dev-dependencies]
 insta = "1.7.1"

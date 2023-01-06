@@ -29,14 +29,23 @@ fn generate_all_grammars(item: &Item, out: &mut Vec<String>) {
     }
 }
 
-#[cfg(feature = "build_parsers")]
+#[cfg(any(feature = "build-parsers-standard", feature = "build-parsers-c2rust"))]
 use std::io::Write;
 use std::path::Path;
 
-#[cfg(feature = "build_parsers")]
-use tree_sitter_cli::generate;
+#[cfg(feature = "build-parsers-standard")]
+use tree_sitter_cli_standard::generate;
 
-#[cfg(feature = "build_parsers")]
+#[cfg(feature = "build-parsers-c2rust")]
+use tree_sitter_cli_c2rust::generate;
+
+#[cfg(feature = "build-parsers-standard")]
+use tree_sitter_runtime_standard as tree_sitter;
+
+#[cfg(feature = "build-parsers-c2rust")]
+use tree_sitter_runtime_c2rust as tree_sitter;
+
+#[cfg(any(feature = "build-parsers-standard", feature = "build-parsers-c2rust"))]
 /// Using the `cc` crate, generates and compiles a C parser with Tree Sitter
 /// for every Rust Sitter grammar found in the given module and recursive
 /// submodules.
@@ -94,6 +103,12 @@ mod tests {
     use syn::parse_quote;
 
     use super::generate_grammar;
+
+    #[cfg(feature = "build-parsers-standard")]
+    use tree_sitter_cli_standard as tree_sitter_cli;
+
+    #[cfg(feature = "build-parsers-c2rust")]
+    use tree_sitter_cli_c2rust as tree_sitter_cli;
 
     #[test]
     fn enum_with_named_field() {
