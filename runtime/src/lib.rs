@@ -138,7 +138,7 @@ pub mod errors {
                 })
             } else {
                 let contents = node.utf8_text(source).unwrap();
-                if contents.len() > 0 {
+                if !contents.is_empty() {
                     errors.push(ParseError {
                         reason: ParseErrorReason::UnexpectedToken(contents.to_string()),
                         start: node.start_byte(),
