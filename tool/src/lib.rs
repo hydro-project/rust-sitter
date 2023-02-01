@@ -41,6 +41,8 @@ use tree_sitter_cli::generate;
 /// for every Rust Sitter grammar found in the given module and recursive
 /// submodules.
 pub fn build_parsers(root_file: &Path) {
+    use std::env;
+
     generate_grammars(root_file).iter().for_each(|grammar| {
         let dir = tempfile::Builder::new()
             .prefix("grammar")
@@ -61,8 +63,25 @@ pub fn build_parsers(root_file: &Path) {
             .unwrap();
         drop(parser_file);
 
+        let sysroot_dir = dir.path().join("sysroot");
+        if env::var("TARGET").unwrap() == "wasm32-unknown-unknown" {
+            std::fs::create_dir(&sysroot_dir).unwrap();
+            let mut stdint = std::fs::File::create(sysroot_dir.join("stdint.h")).unwrap();
+            stdint
+                .write_all(include_bytes!("wasm-sysroot/stdint.h"))
+                .unwrap();
+            drop(stdint);
+
+            let mut stdlib = std::fs::File::create(sysroot_dir.join("stdlib.h")).unwrap();
+            stdlib
+                .write_all(include_bytes!("wasm-sysroot/stdlib.h"))
+                .unwrap();
+            drop(stdlib);
+        }
+
         cc::Build::new()
             .include(&dir)
+            .include(&sysroot_dir)
             .file(dir.path().join("parser.c"))
             .compile(&grammar_name);
     });

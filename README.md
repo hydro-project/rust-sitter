@@ -11,6 +11,8 @@ rust-sitter = "0.2.0"
 rust-sitter-tool = "0.2.0"
 ```
 
+_Note: By default, Rust Sitter uses a fork of Tree Sitter with a pure-Rust runtime to support `wasm32-unknown-unknown`. To use the standard C runtime instead, disable default features and enable the `tree-sitter-standard` feature_
+
 The first step is to configure your `build.rs` to compile and link the generated Tree Sitter parser:
 
 ```rust
