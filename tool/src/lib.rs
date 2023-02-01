@@ -29,14 +29,14 @@ fn generate_all_grammars(item: &Item, out: &mut Vec<String>) {
     }
 }
 
-#[cfg(feature = "build-parsers")]
+#[cfg(feature = "build_parsers")]
 use std::io::Write;
 use std::path::Path;
 
-#[cfg(feature = "build-parsers")]
+#[cfg(feature = "build_parsers")]
 use tree_sitter_cli::generate;
 
-#[cfg(feature = "build-parsers")]
+#[cfg(feature = "build_parsers")]
 /// Using the `cc` crate, generates and compiles a C parser with Tree Sitter
 /// for every Rust Sitter grammar found in the given module and recursive
 /// submodules.

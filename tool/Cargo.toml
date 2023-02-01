@@ -11,8 +11,8 @@ keywords = ["parsing", "codegen"]
 categories = ["development-tools"]
 
 [features]
-default = ["build-parsers"]
-build-parsers = ["dep:tempfile", "dep:cc"]
+default = ["build_parsers"]
+build_parsers = ["dep:tempfile", "dep:tree-sitter", "dep:tree-sitter-cli", "dep:cc"]
 
 [dependencies]
 syn = { version = "1.0", features = [ "full", "extra-traits" ] }
@@ -22,10 +22,9 @@ serde_json = { version = "1", features = ["preserve_order"] }
 rust-sitter-common = { version = "0.2.0", path = "../common" }
 
 tempfile = { version = "3.0.0", optional = true }
+tree-sitter = { package = "tree-sitter", version = "0.20.9", optional = true }
+tree-sitter-cli = { package = "tree-sitter-cli", version = "0.20.7", optional = true }
 cc = { version = "1.0.73", optional = true }
-
-tree-sitter = { package = "tree-sitter", version = "0.20.9" }
-tree-sitter-cli = { package = "tree-sitter-cli", version = "0.20.7" }
 
 [dev-dependencies]
 insta = "1.7.1"
