@@ -37,9 +37,6 @@ use std::path::Path;
 use tree_sitter_cli::generate;
 
 #[cfg(feature = "build-parsers")]
-use tree_sitter;
-
-#[cfg(feature = "build-parsers")]
 /// Using the `cc` crate, generates and compiles a C parser with Tree Sitter
 /// for every Rust Sitter grammar found in the given module and recursive
 /// submodules.
