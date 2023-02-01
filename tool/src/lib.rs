@@ -93,8 +93,6 @@ mod tests {
 
     use super::generate_grammar;
 
-    use tree_sitter_cli;
-
     #[test]
     fn enum_with_named_field() {
         let m = if let syn::Item::Mod(m) = parse_quote! {
