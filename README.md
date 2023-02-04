@@ -56,9 +56,9 @@ For the `Add` variant, things are a bit more complicated. First, we add an extra
 
 ```rust
 Add(
-    Box<Expression>,
+    Box<Expr>,
     #[rust_sitter::leaf(text = "+")] (),
-    Box<Expression>,
+    Box<Expr>,
 )
 ```
 
@@ -67,9 +67,9 @@ If we try to compile this grammar, however, we will see ane error due to conflic
 ```rust
 #[rust_sitter::prec_left(1)]
 Add(
-    Box<Expression>,
+    Box<Expr>,
     #[rust_sitter::leaf(text = "+")] (),
-    Box<Expression>,
+    Box<Expr>,
 )
 ```
 
@@ -86,9 +86,9 @@ mod grammar {
         ),
         #[rust_sitter::prec_left(1)]
         Add(
-            Box<Expression>,
+            Box<Expr>,
             #[rust_sitter::leaf(text = "+")] (),
-            Box<Expression>,
+            Box<Expr>,
         )
     }
 }
