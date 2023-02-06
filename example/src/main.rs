@@ -16,23 +16,23 @@ fn convert_parse_error_to_diagnostics(
     match &error.reason {
         ParseErrorReason::MissingToken(tok) => diagnostics.push(Diagnostic {
             level: Level::Error,
-            message: format!("Missing token: \"{}\"", tok),
+            message: format!("Missing token: \"{tok}\""),
             code: Some("S000".to_string()),
             spans: vec![SpanLabel {
                 span: file_span.subspan(error.start as u64, error.end as u64),
                 style: SpanStyle::Primary,
-                label: Some(format!("missing \"{}\"", tok)),
+                label: Some(format!("missing \"{tok}\"")),
             }],
         }),
 
         ParseErrorReason::UnexpectedToken(tok) => diagnostics.push(Diagnostic {
             level: Level::Error,
-            message: format!("Unexpected token: \"{}\"", tok),
+            message: format!("Unexpected token: \"{tok}\""),
             code: Some("S000".to_string()),
             spans: vec![SpanLabel {
                 span: file_span.subspan(error.start as u64, error.end as u64),
                 style: SpanStyle::Primary,
-                label: Some(format!("unexpected \"{}\"", tok)),
+                label: Some(format!("unexpected \"{tok}\"")),
             }],
         }),
 
@@ -72,7 +72,7 @@ fn main() {
         }
 
         match arithmetic::grammar::parse(input) {
-            Ok(expr) => println!("{:?}", expr),
+            Ok(expr) => println!("{expr:?}"),
             Err(errs) => {
                 let mut codemap = CodeMap::new();
                 let file_span = codemap.add_file("<input>".to_string(), input.to_string());

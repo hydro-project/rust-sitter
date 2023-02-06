@@ -108,7 +108,7 @@ fn gen_field(
 
         let delimiter_json = delimited_params.map(|p| {
             gen_field(
-                format!("{}_vec_delimiter", path),
+                format!("{path}_vec_delimiter"),
                 p.field.ty,
                 p.field.attrs,
                 out,
@@ -135,7 +135,7 @@ fn gen_field(
 
         let field_rule_non_optional = json!({
             "type": "FIELD",
-            "name": format!("{}_vec_element", path),
+            "name": format!("{path}_vec_element"),
             "content": field_json
         });
 
@@ -195,7 +195,7 @@ fn gen_field(
             })
         };
 
-        let contents_ident = format!("{}_vec_contents", path);
+        let contents_ident = format!("{path}_vec_contents");
         out.insert(contents_ident.clone(), vec_contents);
 
         (
@@ -238,7 +238,7 @@ fn gen_struct_or_variant(
                     .ident
                     .as_ref()
                     .map(|v| v.to_string())
-                    .unwrap_or(format!("{}", i));
+                    .unwrap_or(format!("{i}"));
 
                 let (field_contents, is_option) = gen_field(
                     format!("{}_{}", path.clone(), ident_str),

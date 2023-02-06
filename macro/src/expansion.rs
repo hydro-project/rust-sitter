@@ -25,7 +25,7 @@ impl ToTokens for ParamOrField {
 }
 
 fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) {
-    let extract_ident = Ident::new(&format!("extract_{}", path), Span::call_site());
+    let extract_ident = Ident::new(&format!("extract_{path}"), Span::call_site());
     let leaf_type = leaf.ty;
 
     let leaf_text_expr: Expr = syn::parse_quote! {
@@ -139,7 +139,7 @@ fn gen_struct_or_variant(
             .ident
             .as_ref()
             .map(|v| v.to_string())
-            .unwrap_or(format!("{}", i));
+            .unwrap_or(format!("{i}"));
 
         if !field
             .attrs
@@ -155,7 +155,7 @@ fn gen_struct_or_variant(
         }
     });
 
-    let extract_ident = Ident::new(&format!("extract_{}", path), Span::call_site());
+    let extract_ident = Ident::new(&format!("extract_{path}"), Span::call_site());
 
     let mut have_named_field = false;
 
@@ -174,7 +174,7 @@ fn gen_struct_or_variant(
                     .ident
                     .as_ref()
                     .map(|v| v.to_string())
-                    .unwrap_or(format!("{}", i));
+                    .unwrap_or(format!("{i}"));
 
                 let ident = Ident::new(
                     &format!("extract_{}_{}", path.clone(), ident_str),
@@ -303,7 +303,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                     .map(|v| {
                         let variant_path = format!("{}_{}", e.ident, v.ident);
                         let extract_ident =
-                            Ident::new(&format!("extract_{}", variant_path), Span::call_site());
+                            Ident::new(&format!("extract_{variant_path}"), Span::call_site());
                         syn::parse_quote! {
                             #variant_path => #extract_ident(node.child(0).unwrap(), source)
                         }
@@ -354,7 +354,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
 
                 let struct_name = &s.ident;
                 let extract_ident =
-                    Ident::new(&format!("extract_{}", struct_name), Span::call_site());
+                    Ident::new(&format!("extract_{struct_name}"), Span::call_site());
 
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #struct_name {
@@ -374,7 +374,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
         })
         .collect();
 
-    let tree_sitter_ident = Ident::new(&format!("tree_sitter_{}", grammar_name), Span::call_site());
+    let tree_sitter_ident = Ident::new(&format!("tree_sitter_{grammar_name}"), Span::call_site());
 
     transformed.push(syn::parse_quote! {
         extern "C" {
