@@ -1,0 +1,10 @@
+---
+source: example/src/words.rs
+expression: "grammar::parse(\"if hello\")"
+---
+Ok(
+    Words {
+        _keyword: (),
+        _word: "hello",
+    },
+)

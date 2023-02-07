@@ -1,5 +1,5 @@
 ---
 source: tool/src/lib.rs
-expression: generate_grammar(&m)
+expression: grammar
 ---
-{"name":"test","rules":{"source_file":{"type":"CHOICE","members":[{"type":"SYMBOL","name":"Expr_Numbers"}]},"Number_value":{"type":"PATTERN","value":"\\d+"},"Number":{"type":"SEQ","members":[{"type":"FIELD","name":"value","content":{"type":"SYMBOL","name":"Number_value"}}]},"Expr_Numbers_0_vec_contents":{"type":"REPEAT1","content":{"type":"FIELD","name":"Expr_Numbers_0_vec_element","content":{"type":"SYMBOL","name":"Number"}}},"Expr_Numbers":{"type":"SEQ","members":[{"type":"FIELD","name":"0","content":{"type":"SYMBOL","name":"Expr_Numbers_0_vec_contents"}}]},"Expr":{"type":"CHOICE","members":[{"type":"SYMBOL","name":"Expr_Numbers"}]}},"extras":[]}
+{"name":"test","word":null,"rules":{"source_file":{"type":"CHOICE","members":[{"type":"SYMBOL","name":"Expr_Numbers"}]},"Number_value":{"type":"PATTERN","value":"\\d+"},"Number":{"type":"SEQ","members":[{"type":"FIELD","name":"value","content":{"type":"SYMBOL","name":"Number_value"}}]},"Expr_Numbers_0_vec_contents":{"type":"REPEAT1","content":{"type":"FIELD","name":"Expr_Numbers_0_vec_element","content":{"type":"SYMBOL","name":"Number"}}},"Expr_Numbers":{"type":"SEQ","members":[{"type":"FIELD","name":"0","content":{"type":"SYMBOL","name":"Expr_Numbers_0_vec_contents"}}]},"Expr":{"type":"CHOICE","members":[{"type":"SYMBOL","name":"Expr_Numbers"}]}},"extras":[]}
