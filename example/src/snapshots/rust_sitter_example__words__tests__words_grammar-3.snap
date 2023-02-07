@@ -2,12 +2,14 @@
 source: example/src/words.rs
 expression: "grammar::parse(\"ifhello\")"
 ---
-Ok(
-    Words {
-        _words: [
-            Ident(
-                "ifhello",
+Err(
+    [
+        ParseError {
+            reason: FailedNode(
+                [],
             ),
-        ],
-    },
+            start: 0,
+            end: 7,
+        },
+    ],
 )

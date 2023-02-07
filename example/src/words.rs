@@ -3,21 +3,11 @@ pub mod grammar {
     #[rust_sitter::language]
     #[derive(Debug)]
     pub struct Words {
-        #[rust_sitter::repeat]
-        _words: Vec<Word>,
-    }
-
-    #[derive(Debug)]
-    enum Word {
-        Keyword(
-            #[rust_sitter::leaf(text = r"if")]
-            #[rust_sitter::word]
-            (),
-        ),
-        Ident(
-            #[rust_sitter::leaf(pattern = r"[a-zA-Z_][a-zA-Z0-9_]*", transform = |v| v.to_string())]
-             String,
-        ),
+        #[rust_sitter::leaf(text = r"if")]
+        _keyword: (),
+        #[rust_sitter::word]
+        #[rust_sitter::leaf(pattern = r"[a-z_]+", transform = |v| v.to_string())]
+        _word: String,
     }
 
     #[rust_sitter::extra]

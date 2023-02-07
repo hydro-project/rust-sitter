@@ -4,13 +4,7 @@ expression: "grammar::parse(\"if hello\")"
 ---
 Ok(
     Words {
-        _words: [
-            Keyword(
-                (),
-            ),
-            Ident(
-                "hello",
-            ),
-        ],
+        _keyword: (),
+        _word: "hello",
     },
 )

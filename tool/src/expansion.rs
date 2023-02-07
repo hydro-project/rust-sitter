@@ -109,7 +109,8 @@ fn gen_field(
             false,
         )
     } else if is_vec {
-        let (field_json, field_optional) = gen_field(path.clone(), inner_type_vec, vec![], word_rule, out);
+        let (field_json, field_optional) =
+            gen_field(path.clone(), inner_type_vec, vec![], word_rule, out);
 
         let delimited_attr = leaf_attrs
             .iter()
@@ -220,7 +221,8 @@ fn gen_field(
         )
     } else {
         // is_option
-        let (field_json, field_optional) = gen_field(path, inner_type_option, leaf_attrs, word_rule, out);
+        let (field_json, field_optional) =
+            gen_field(path, inner_type_option, leaf_attrs, word_rule, out);
 
         if field_optional {
             panic!("Option<Option<_>> is not supported");
