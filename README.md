@@ -133,6 +133,9 @@ This annotation can be used to define a left/right-associative operator. This an
 ### `#[rust_sitter::skip(...)]`
 This annotation can be used to define a field that does not correspond to anything in the input string, such as some metadata. This annotation takes a single parameter, which is the value that should be used to populate that field at runtime.
 
+### `#[rust_sitter::word]`
+This annotation marks the field as a Tree Sitter [word](https://tree-sitter.github.io/tree-sitter/creating-parsers#keywords), which is useful when handling errors involving keywords. Only one field in the grammar can be marked as a word.
+
 ## Special Types
 Rust Sitter has a few special types that can be used to define more complex grammars.
 
