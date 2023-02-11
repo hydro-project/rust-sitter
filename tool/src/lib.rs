@@ -1,3 +1,4 @@
+use serde_json::Value;
 use syn::{parse_quote, Item};
 
 mod expansion;
@@ -5,7 +6,7 @@ use expansion::*;
 
 /// Generates JSON strings defining Tree Sitter grammars for every Rust Sitter
 /// grammar found in the given module and recursive submodules.
-pub fn generate_grammars(root_file: &Path) -> Vec<String> {
+pub fn generate_grammars(root_file: &Path) -> Vec<Value> {
     let root_file = syn_inline_mod::parse_and_inline_modules(root_file).items;
     let mut out = vec![];
     root_file
@@ -14,7 +15,7 @@ pub fn generate_grammars(root_file: &Path) -> Vec<String> {
     out
 }
 
-fn generate_all_grammars(item: &Item, out: &mut Vec<String>) {
+fn generate_all_grammars(item: &Item, out: &mut Vec<Value>) {
     if let Item::Mod(m) = item {
         m.content
             .iter()
@@ -24,7 +25,7 @@ fn generate_all_grammars(item: &Item, out: &mut Vec<String>) {
             .iter()
             .any(|a| a.path == parse_quote!(rust_sitter::grammar))
         {
-            out.push(generate_grammar(m).to_string())
+            out.push(generate_grammar(m))
         }
     }
 }
@@ -54,13 +55,13 @@ pub fn build_parsers(root_file: &Path) {
         let grammar_file = dir.path().join("parser.c");
         let mut f = std::fs::File::create(grammar_file).unwrap();
 
-        let (grammar_name, grammar_c) = generate::generate_parser_for_grammar(grammar).unwrap();
+        let (grammar_name, grammar_c) = generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
         f.write_all(grammar_c.as_bytes()).unwrap();
         drop(f);
 
         // emit grammar into the build out_dir
         let mut grammar_json_file = std::fs::File::create(grammar_dir.join(format!("{grammar_name}.json"))).unwrap();
-        grammar_json_file.write_all(grammar.as_bytes()).unwrap();
+        grammar_json_file.write_all(serde_json::to_string_pretty(grammar).unwrap().as_bytes()).unwrap();
         drop(grammar_json_file);
 
         let header_dir = dir.path().join("tree_sitter");
