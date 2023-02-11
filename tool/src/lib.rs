@@ -42,6 +42,9 @@ use tree_sitter_cli::generate;
 /// submodules.
 pub fn build_parsers(root_file: &Path) {
     use std::env;
+    let out_dir = env::var("OUT_DIR").unwrap();
+    let grammar_dir = Path::new(out_dir.as_str()).join("grammars");
+    std::fs::DirBuilder::new().recursive(true).create(grammar_dir.clone()).expect("Couldn't create grammar JSON directory");
 
     generate_grammars(root_file).iter().for_each(|grammar| {
         let dir = tempfile::Builder::new()
@@ -54,6 +57,11 @@ pub fn build_parsers(root_file: &Path) {
         let (grammar_name, grammar_c) = generate::generate_parser_for_grammar(grammar).unwrap();
         f.write_all(grammar_c.as_bytes()).unwrap();
         drop(f);
+
+        // emit grammar into the build out_dir
+        let mut grammar_json_file = std::fs::File::create(grammar_dir.join(format!("{grammar_name}.json"))).unwrap();
+        grammar_json_file.write_all(grammar.as_bytes()).unwrap();
+        drop(grammar_json_file);
 
         let header_dir = dir.path().join("tree_sitter");
         std::fs::create_dir(&header_dir).unwrap();
