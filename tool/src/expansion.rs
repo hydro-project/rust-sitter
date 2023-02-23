@@ -287,6 +287,12 @@ fn gen_struct_or_variant(
         })
         .collect::<Vec<Value>>();
 
+    let prec_attr = attrs
+        .iter()
+        .find(|attr| attr.path == syn::parse_quote!(rust_sitter::prec));
+
+    let prec_param = prec_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
+
     let prec_left_attr = attrs
         .iter()
         .find(|attr| attr.path == syn::parse_quote!(rust_sitter::prec_left));
@@ -304,9 +310,23 @@ fn gen_struct_or_variant(
         "members": children
     });
 
-    let rule = if let Some(Expr::Lit(lit)) = prec_left_param {
+    let rule = if let Some(Expr::Lit(lit)) = prec_param {
+        if prec_left_attr.is_some() || prec_right_attr.is_some() {
+            panic!("only one of prec, prec_left, and prec_right can be specified");
+        }
+
+        if let Lit::Int(i) = &lit.lit {
+            json!({
+                "type": "PREC",
+                "value": i.base10_parse::<u32>().unwrap(),
+                "content": seq_rule
+            })
+        } else {
+            panic!("Expected integer literal for precedence");
+        }
+    } else if let Some(Expr::Lit(lit)) = prec_left_param {
         if prec_right_attr.is_some() {
-            panic!("prec_left and prec_right cannot both be specified");
+            panic!("only one of prec, prec_left, and prec_right can be specified");
         }
 
         if let Lit::Int(i) = &lit.lit {
