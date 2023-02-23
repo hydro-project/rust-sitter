@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 pub use rust_sitter_macro::*;
 
 #[cfg(feature = "tree-sitter-standard")]
@@ -70,8 +72,10 @@ pub struct Spanned<T> {
     pub span: (usize, usize),
 }
 
-impl<T> AsRef<T> for Spanned<T> {
-    fn as_ref(&self) -> &T {
+impl<T> Deref for Spanned<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
         &self.value
     }
 }
