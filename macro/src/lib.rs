@@ -22,6 +22,23 @@ pub fn language(
 }
 
 #[proc_macro_attribute]
+/// Marks the AST node as an extra, which can be safely skipped over while parsing.
+///
+/// ## Example
+/// ```ignore
+/// #[rust_sitter::extra]
+/// pub struct Comment {
+///     ...
+/// }
+/// ```
+pub fn extra(
+    _attr: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    item
+}
+
+#[proc_macro_attribute]
 /// Defines a field which matches a specific token in the source string.
 /// The token can be defined by passing one of two arguments
 /// - `text`: a string literal that will be exactly matched
