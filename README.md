@@ -137,7 +137,7 @@ This annotation can be used to define a field that does not correspond to anythi
 This annotation marks the field as a Tree Sitter [word](https://tree-sitter.github.io/tree-sitter/creating-parsers#keywords), which is useful when handling errors involving keywords. Only one field in the grammar can be marked as a word.
 
 ### `#[rust_sitter::extra]`
-This annotation marks a node as extra and can safetly be skipped while parsing. This is useful for handling whitespace/newlines/comments.
+This annotation marks a node as extra and can safely be skipped while parsing. This is useful for handling whitespace/newlines/comments.
 
 ```rust
 #[rust_sitter::extra]
