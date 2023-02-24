@@ -22,13 +22,15 @@ pub fn language(
 }
 
 #[proc_macro_attribute]
-/// Marks the AST node as an extra, which can be safely skipped over while parsing.
+/// This annotation marks a node as extra, which can safely be skipped while parsing.
+/// This is useful for handling whitespace/newlines/comments.
 ///
 /// ## Example
 /// ```ignore
 /// #[rust_sitter::extra]
-/// pub struct Comment {
-///     ...
+/// struct Whitespace {
+///     #[rust_sitter::leaf(pattern = r"\s")]
+///     _whitespace: (),
 /// }
 /// ```
 pub fn extra(
