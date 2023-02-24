@@ -83,6 +83,8 @@ pub fn build_parsers(root_file: &Path) {
             .include(&dir)
             .include(&sysroot_dir)
             .flag("-Wno-unused-label")
+            .flag("-Wno-unused-but-set-variable")
+            .flag("-Wno-unknown-warning-option")
             .file(dir.path().join("parser.c"))
             .compile(&grammar_name);
     });
