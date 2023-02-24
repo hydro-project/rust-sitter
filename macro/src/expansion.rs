@@ -88,7 +88,7 @@ fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) 
     out.push(syn::parse_quote! {
         #[allow(non_snake_case)]
         #[allow(clippy::unused_unit)]
-        fn #extract_ident(cursor_opt: &mut Option<rust_sitter::TreeCursor>, source: &[u8], last_idx: &mut usize) -> #leaf_type {
+        fn #extract_ident(cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>, source: &[u8], last_idx: &mut usize) -> #leaf_type {
             #(#leaf_stmts)*
 
             if let Some(cursor) = cursor_opt.as_mut() {
@@ -96,7 +96,7 @@ fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) 
                     let n = cursor.node();
                     if let Some(name) = cursor.field_name() {
                         if name == #ident_str {
-                            let node: Option<rust_sitter::Node> = Some(n);
+                            let node: Option<rust_sitter::tree_sitter::Node> = Some(n);
                             let out = #leaf_expr;
 
                             if !cursor.goto_next_sibling() {
@@ -107,7 +107,7 @@ fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) 
 
                             return out;
                         } else {
-                            let node: Option<rust_sitter::Node> = None;
+                            let node: Option<rust_sitter::tree_sitter::Node> = None;
                             return #leaf_expr;
                         }
                     } else {
@@ -115,12 +115,12 @@ fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) 
                     }
 
                     if !cursor.goto_next_sibling() {
-                        let node: Option<rust_sitter::Node> = None;
+                        let node: Option<rust_sitter::tree_sitter::Node> = None;
                         return #leaf_expr;
                     }
                 }
             } else {
-                let node: Option<rust_sitter::Node> = None;
+                let node: Option<rust_sitter::tree_sitter::Node> = None;
                 return #leaf_expr;
             }
         }
@@ -225,7 +225,7 @@ fn gen_struct_or_variant(
 
     out.push(syn::parse_quote! {
         #[allow(non_snake_case)]
-        fn #extract_ident(node: rust_sitter::Node, source: &[u8]) -> #containing_type {
+        fn #extract_ident(node: rust_sitter::tree_sitter::Node, source: &[u8]) -> #containing_type {
             let mut last_idx = node.start_byte();
             let mut parent_cursor = node.walk();
             let mut cursor = if parent_cursor.goto_first_child() {
@@ -322,7 +322,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #enum_name {
                         #[allow(non_snake_case)]
-                        fn extract(node: Option<rust_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
+                        fn extract(node: Option<rust_sitter::tree_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
                             let node = node.unwrap();
                             #(#impl_body)*
                             match node.child(0).unwrap().kind() {
@@ -359,7 +359,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 let extract_impl: Item = syn::parse_quote! {
                     impl rust_sitter::Extract for #struct_name {
                         #[allow(non_snake_case)]
-                        fn extract(node: Option<rust_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
+                        fn extract(node: Option<rust_sitter::tree_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
                             let node = node.unwrap();
                             #(#impl_body)*
                             #extract_ident(node, source)
@@ -378,19 +378,19 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
 
     transformed.push(syn::parse_quote! {
         extern "C" {
-            fn #tree_sitter_ident() -> rust_sitter::Language;
+            fn #tree_sitter_ident() -> rust_sitter::tree_sitter::Language;
         }
     });
 
     transformed.push(syn::parse_quote! {
-        fn language() -> rust_sitter::Language {
+        fn language() -> rust_sitter::tree_sitter::Language {
             unsafe { #tree_sitter_ident() }
         }
     });
 
     transformed.push(syn::parse_quote! {
       pub fn parse(input: &str) -> core::result::Result<#root_type, Vec<rust_sitter::errors::ParseError>> {
-          let mut parser = rust_sitter::Parser::new();
+          let mut parser = rust_sitter::tree_sitter::Parser::new();
           parser.set_language(language()).unwrap();
           let tree = parser.parse(input, None).unwrap();
           let root_node = tree.root_node();
