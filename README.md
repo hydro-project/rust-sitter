@@ -122,7 +122,7 @@ grammar::parse("1+2+3") = Ok(Add(
 Rust Sitter supports a number of annotations that can be applied to type and fields in your grammar. These annotations can be used to control how the parser behaves, and how the resulting AST is constructed.
 
 ### `#[rust_sitter::language]`
-This annotations marks the entrypoint for parsing, and determines which AST type will be returned from parsing. Only one type in the grammar can be marked as the entrypoint.
+This annotation marks the entrypoint for parsing, and determines which AST type will be returned from parsing. Only one type in the grammar can be marked as the entrypoint.
 
 ```rust
 #[rust_sitter::language]
