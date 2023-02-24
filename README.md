@@ -118,9 +118,31 @@ grammar::parse("1+2+3") = Ok(Add(
 */
 ```
 
-## Field Annotations
-Rust Sitter supports a number of annotations that can be applied to fields in your grammar. These annotations can be used to control how the parser behaves, and how the resulting AST is constructed.
+## Type Annotations
+Rust Sitter supports a number of annotations that can be applied to type and fields in your grammar. These annotations can be used to control how the parser behaves, and how the resulting AST is constructed.
 
+### `#[rust_sitter::language]`
+This annotations marks the entrypoint for parsing, and determines which AST type will be returned from parsing. Only one type in the grammar can be marked as the entrypoint.
+
+```rust
+#[rust_sitter::language]
+struct Code {
+    ...
+}
+````
+
+### `#[rust_sitter::extra]`
+This annotation marks a node as extra and can safely be skipped while parsing. This is useful for handling whitespace/newlines/comments.
+
+```rust
+#[rust_sitter::extra]
+struct Whitespace {
+    #[rust_sitter::leaf(pattern = r"\s")]
+    _whitespace: (),
+}
+```
+
+## Field Annotations
 ### `#[rust_sitter::leaf(...)]`
 The `#[rust_sitter::leaf(...)]` annotation can be used to define a leaf node in the AST. This annotation takes a number of parameters that control how the parser behaves:
 - the `pattern` parameter takes a regular expression that is used to match the text of the leaf node. This parameter is required.
@@ -135,17 +157,6 @@ This annotation can be used to define a field that does not correspond to anythi
 
 ### `#[rust_sitter::word]`
 This annotation marks the field as a Tree Sitter [word](https://tree-sitter.github.io/tree-sitter/creating-parsers#keywords), which is useful when handling errors involving keywords. Only one field in the grammar can be marked as a word.
-
-### `#[rust_sitter::extra]`
-This annotation marks a node as extra and can safely be skipped while parsing. This is useful for handling whitespace/newlines/comments.
-
-```rust
-#[rust_sitter::extra]
-struct Whitespace {
-    #[rust_sitter::leaf(pattern = r"\s")]
-    _whitespace: (),
-}
-```
 
 ## Special Types
 Rust Sitter has a few special types that can be used to define more complex grammars.
