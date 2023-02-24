@@ -83,6 +83,25 @@ pub fn skip(
 }
 
 #[proc_macro_attribute]
+/// Defines a precedence level for a non-terminal that has no associativity.
+///
+/// This annotation takes a single, unnamed parameter, which specifies the precedence level.
+/// This is used to resolve conflicts with other non-terminals, so that the one with the higher
+/// precedence will bind more tightly (appear lower in the parse tree).
+///
+/// ## Example
+/// ```ignore
+/// #[rust_sitter::prec(1)]
+/// PriorityExpr(Box<Expr>, Box<Expr>)
+/// ```
+pub fn prec(
+    _attr: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    item
+}
+
+#[proc_macro_attribute]
 /// Defines a precedence level for a non-terminal that should be left-associative.
 /// For example, with subtraction we expect 1 - 2 - 3 to be parsed as (1 - 2) - 3,
 /// which corresponds to a left-associativity.
@@ -97,6 +116,27 @@ pub fn skip(
 /// Subtract(Box<Expr>, Box<Expr>)
 /// ```
 pub fn prec_left(
+    _attr: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    item
+}
+
+#[proc_macro_attribute]
+/// Defines a precedence level for a non-terminal that should be right-associative.
+/// For example, with cons we could have 1 :: 2 :: 3 to be parsed as 1 :: (2 :: 3),
+/// which corresponds to a right-associativity.
+///
+/// This annotation takes a single, unnamed parameter, which specifies the precedence level.
+/// This is used to resolve conflicts with other non-terminals, so that the one with the higher
+/// precedence will bind more tightly (appear lower in the parse tree).
+///
+/// ## Example
+/// ```ignore
+/// #[rust_sitter::prec_right(1)]
+/// Cons(Box<Expr>, Box<Expr>)
+/// ```
+pub fn prec_right(
     _attr: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
