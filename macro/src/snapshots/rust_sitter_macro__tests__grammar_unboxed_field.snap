@@ -8,12 +8,16 @@ mod grammar {
     }
     impl rust_sitter::Extract for Language {
         #[allow(non_snake_case)]
-        fn extract(node: Option<rust_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
+        fn extract(
+            node: Option<rust_sitter::tree_sitter::Node>,
+            source: &[u8],
+            last_idx: usize,
+        ) -> Self {
             let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Language_e(
-                cursor_opt: &mut Option<rust_sitter::TreeCursor>,
+                cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>,
                 source: &[u8],
                 last_idx: &mut usize,
             ) -> Expression {
@@ -22,7 +26,7 @@ mod grammar {
                         let n = cursor.node();
                         if let Some(name) = cursor.field_name() {
                             if name == "e" {
-                                let node: Option<rust_sitter::Node> = Some(n);
+                                let node: Option<rust_sitter::tree_sitter::Node> = Some(n);
                                 let out = rust_sitter::Extract::extract(node, source, *last_idx);
                                 if !cursor.goto_next_sibling() {
                                     *cursor_opt = None;
@@ -30,24 +34,24 @@ mod grammar {
                                 *last_idx = n.end_byte();
                                 return out;
                             } else {
-                                let node: Option<rust_sitter::Node> = None;
+                                let node: Option<rust_sitter::tree_sitter::Node> = None;
                                 return rust_sitter::Extract::extract(node, source, *last_idx);
                             }
                         } else {
                             *last_idx = n.end_byte();
                         }
                         if !cursor.goto_next_sibling() {
-                            let node: Option<rust_sitter::Node> = None;
+                            let node: Option<rust_sitter::tree_sitter::Node> = None;
                             return rust_sitter::Extract::extract(node, source, *last_idx);
                         }
                     }
                 } else {
-                    let node: Option<rust_sitter::Node> = None;
+                    let node: Option<rust_sitter::tree_sitter::Node> = None;
                     return rust_sitter::Extract::extract(node, source, *last_idx);
                 }
             }
             #[allow(non_snake_case)]
-            fn extract_Language(node: rust_sitter::Node, source: &[u8]) -> Language {
+            fn extract_Language(node: rust_sitter::tree_sitter::Node, source: &[u8]) -> Language {
                 let mut last_idx = node.start_byte();
                 let mut parent_cursor = node.walk();
                 let mut cursor = if parent_cursor.goto_first_child() {
@@ -67,12 +71,16 @@ mod grammar {
     }
     impl rust_sitter::Extract for Expression {
         #[allow(non_snake_case)]
-        fn extract(node: Option<rust_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
+        fn extract(
+            node: Option<rust_sitter::tree_sitter::Node>,
+            source: &[u8],
+            last_idx: usize,
+        ) -> Self {
             let node = node.unwrap();
             #[allow(non_snake_case)]
             #[allow(clippy::unused_unit)]
             fn extract_Expression_Number_0(
-                cursor_opt: &mut Option<rust_sitter::TreeCursor>,
+                cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>,
                 source: &[u8],
                 last_idx: &mut usize,
             ) -> i32 {
@@ -84,7 +92,7 @@ mod grammar {
                         let n = cursor.node();
                         if let Some(name) = cursor.field_name() {
                             if name == "0" {
-                                let node: Option<rust_sitter::Node> = Some(n);
+                                let node: Option<rust_sitter::tree_sitter::Node> = Some(n);
                                 let out = make_transform()(
                                     node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
                                 );
@@ -94,7 +102,7 @@ mod grammar {
                                 *last_idx = n.end_byte();
                                 return out;
                             } else {
-                                let node: Option<rust_sitter::Node> = None;
+                                let node: Option<rust_sitter::tree_sitter::Node> = None;
                                 return make_transform()(
                                     node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
                                 );
@@ -103,19 +111,22 @@ mod grammar {
                             *last_idx = n.end_byte();
                         }
                         if !cursor.goto_next_sibling() {
-                            let node: Option<rust_sitter::Node> = None;
+                            let node: Option<rust_sitter::tree_sitter::Node> = None;
                             return make_transform()(
                                 node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
                             );
                         }
                     }
                 } else {
-                    let node: Option<rust_sitter::Node> = None;
+                    let node: Option<rust_sitter::tree_sitter::Node> = None;
                     return make_transform()(node.and_then(|n| n.utf8_text(source).ok()).unwrap());
                 }
             }
             #[allow(non_snake_case)]
-            fn extract_Expression_Number(node: rust_sitter::Node, source: &[u8]) -> Expression {
+            fn extract_Expression_Number(
+                node: rust_sitter::tree_sitter::Node,
+                source: &[u8],
+            ) -> Expression {
                 let mut last_idx = node.start_byte();
                 let mut parent_cursor = node.walk();
                 let mut cursor = if parent_cursor.goto_first_child() {
@@ -136,15 +147,15 @@ mod grammar {
         }
     }
     extern "C" {
-        fn tree_sitter_test() -> rust_sitter::Language;
+        fn tree_sitter_test() -> rust_sitter::tree_sitter::Language;
     }
-    fn language() -> rust_sitter::Language {
+    fn language() -> rust_sitter::tree_sitter::Language {
         unsafe { tree_sitter_test() }
     }
     pub fn parse(
         input: &str,
     ) -> core::result::Result<Language, Vec<rust_sitter::errors::ParseError>> {
-        let mut parser = rust_sitter::Parser::new();
+        let mut parser = rust_sitter::tree_sitter::Parser::new();
         parser.set_language(language()).unwrap();
         let tree = parser.parse(input, None).unwrap();
         let root_node = tree.root_node();

@@ -3,16 +3,10 @@ use std::ops::Deref;
 pub use rust_sitter_macro::*;
 
 #[cfg(feature = "tree-sitter-standard")]
-pub use tree_sitter_runtime_standard::*;
-
-#[cfg(feature = "tree-sitter-standard")]
-use tree_sitter_runtime_standard as tree_sitter;
+pub use tree_sitter_runtime_standard as tree_sitter;
 
 #[cfg(feature = "tree-sitter-c2rust")]
-pub use tree_sitter_runtime_c2rust::*;
-
-#[cfg(feature = "tree-sitter-c2rust")]
-use tree_sitter_runtime_c2rust as tree_sitter;
+pub use tree_sitter_runtime_c2rust as tree_sitter;
 
 /// Defines the logic used to convert a node in a Tree Sitter tree to
 /// the corresponding Rust type.
