@@ -7,10 +7,10 @@ Rust Sitter makes it easy to create efficient parsers in Rust by leveraging the 
 First, add Rust/Tree Sitter to your `Cargo.toml`:
 ```toml
 [dependencies]
-rust-sitter = "0.2.1"
+rust-sitter = "0.3.0"
 
 [build-dependencies]
-rust-sitter-tool = "0.2.1"
+rust-sitter-tool = "0.3.0"
 ```
 
 _Note: By default, Rust Sitter uses a fork of Tree Sitter with a pure-Rust runtime to support `wasm32-unknown-unknown`. To use the standard C runtime instead, disable default features and enable the `tree-sitter-standard` feature_

@@ -551,7 +551,7 @@ dependencies = [
 
 [[package]]
 name = "rust-sitter"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "insta",
  "rust-sitter-macro",
@@ -562,7 +562,7 @@ dependencies = [
 
 [[package]]
 name = "rust-sitter-common"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "quote",
  "syn",
@@ -570,7 +570,7 @@ dependencies = [
 
 [[package]]
 name = "rust-sitter-example"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "codemap",
  "codemap-diagnostic",
@@ -581,7 +581,7 @@ dependencies = [
 
 [[package]]
 name = "rust-sitter-macro"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "insta",
  "proc-macro2",
@@ -593,7 +593,7 @@ dependencies = [
 
 [[package]]
 name = "rust-sitter-tool"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "cc",
  "insta",
