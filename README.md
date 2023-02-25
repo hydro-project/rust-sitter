@@ -1,4 +1,6 @@
 # Rust Sitter
+![Crates.io](https://img.shields.io/crates/v/rust-sitter)
+
 Rust Sitter makes it easy to create efficient parsers in Rust by leveraging the [Tree Sitter](https://tree-sitter.github.io/tree-sitter/) parser generator. With Rust Sitter, you can define your entire grammar with annotations on idiomatic Rust code, and let macros generate the parser and type-safe bindings for you!
 
 ## Installation
