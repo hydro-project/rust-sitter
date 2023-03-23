@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use proc_macro2::Span;
 use quote::ToTokens;
 use rust_sitter_common::*;
-use syn::{parse::Parse, punctuated::Punctuated, *};
+use syn::{parse::Parse, punctuated::Punctuated, *, spanned::Spanned};
 
 fn is_sitter_attr(attr: &Attribute) -> bool {
     let ident = &attr.path.segments.iter().next().unwrap().ident;
@@ -25,10 +25,11 @@ impl ToTokens for ParamOrField {
 }
 
 fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) {
+    let leaf_span = leaf.span();
     let extract_ident = Ident::new(&format!("extract_{path}"), Span::call_site());
     let leaf_type = leaf.ty;
 
-    let leaf_text_expr: Expr = syn::parse_quote! {
+    let leaf_text_expr: Expr = syn::parse_quote_spanned! {leaf_span=>
         node.and_then(|n| n.utf8_text(source).ok())
     };
 
@@ -63,17 +64,17 @@ fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) 
             }
 
             (
-                vec![syn::parse_quote! {
+                vec![syn::parse_quote_spanned! {closure.span()=>
                     fn make_transform() -> impl Fn(&str) -> #inner_type_option {
                         #closure
                     }
                 }],
                 if is_option {
-                    syn::parse_quote! {
+                    syn::parse_quote_spanned! {closure.span()=>
                         #leaf_text_expr.map(|t| make_transform()(t))
                     }
                 } else {
-                    syn::parse_quote! {
+                    syn::parse_quote_spanned! {closure.span()=>
                         make_transform()(#leaf_text_expr.unwrap())
                     }
                 },
@@ -81,11 +82,11 @@ fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) 
         }
         None => (
             vec![],
-            syn::parse_quote!(rust_sitter::Extract::extract(node, source, *last_idx)),
+            syn::parse_quote_spanned!(leaf_span=> rust_sitter::Extract::extract(node, source, *last_idx)),
         ),
     };
 
-    out.push(syn::parse_quote! {
+    out.push(syn::parse_quote_spanned! {leaf_span=>
         #[allow(non_snake_case)]
         #[allow(clippy::unused_unit)]
         fn #extract_ident(cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>, source: &[u8], last_idx: &mut usize) -> #leaf_type {
@@ -304,7 +305,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                         let variant_path = format!("{}_{}", e.ident, v.ident);
                         let extract_ident =
                             Ident::new(&format!("extract_{variant_path}"), Span::call_site());
-                        syn::parse_quote! {
+                        syn::parse_quote_spanned! {v.span()=>
                             #variant_path => #extract_ident(node.child(0).unwrap(), source)
                         }
                     })
@@ -319,7 +320,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 });
 
                 let enum_name = &e.ident;
-                let extract_impl: Item = syn::parse_quote! {
+                let extract_impl: Item = syn::parse_quote_spanned! {e.span()=>
                     impl rust_sitter::Extract for #enum_name {
                         #[allow(non_snake_case)]
                         fn extract(node: Option<rust_sitter::tree_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
@@ -356,7 +357,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                 let extract_ident =
                     Ident::new(&format!("extract_{struct_name}"), Span::call_site());
 
-                let extract_impl: Item = syn::parse_quote! {
+                let extract_impl: Item = syn::parse_quote_spanned! {s.span()=>
                     impl rust_sitter::Extract for #struct_name {
                         #[allow(non_snake_case)]
                         fn extract(node: Option<rust_sitter::tree_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
