@@ -7,12 +7,14 @@ mod grammar {
         Number(u32),
         Neg { _bang: (), value: Box<Expr> },
     }
-    impl rust_sitter::Extract for Expr {
+    impl rust_sitter::Extract<Expr> for Expr {
+        type LeafFn = ();
         #[allow(non_snake_case)]
         fn extract(
             node: Option<rust_sitter::tree_sitter::Node>,
             source: &[u8],
             last_idx: usize,
+            _leaf_fn: Option<&Self::LeafFn>,
         ) -> Self {
             let node = node.unwrap();
             #[allow(non_snake_case)]
@@ -22,18 +24,13 @@ mod grammar {
                 source: &[u8],
                 last_idx: &mut usize,
             ) -> u32 {
-                fn make_transform() -> impl Fn(&str) -> u32 {
-                    |v| v.parse().unwrap()
-                }
                 if let Some(cursor) = cursor_opt.as_mut() {
                     loop {
                         let n = cursor.node();
                         if let Some(name) = cursor.field_name() {
                             if name == "0" {
                                 let node: Option<rust_sitter::tree_sitter::Node> = Some(n);
-                                let out = make_transform()(
-                                    node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
-                                );
+                                let out = < rust_sitter :: WithLeaf < u32 > as rust_sitter :: Extract < _ > > :: extract (node , source , * last_idx , Some (& | v | v . parse () . unwrap ())) ;
                                 if !cursor.goto_next_sibling() {
                                     *cursor_opt = None;
                                 };
@@ -41,23 +38,24 @@ mod grammar {
                                 return out;
                             } else {
                                 let node: Option<rust_sitter::tree_sitter::Node> = None;
-                                return make_transform()(
-                                    node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
-                                );
+                                return < rust_sitter :: WithLeaf < u32 > as rust_sitter :: Extract < _ > > :: extract (node , source , * last_idx , Some (& | v | v . parse () . unwrap ())) ;
                             }
                         } else {
                             *last_idx = n.end_byte();
                         }
                         if !cursor.goto_next_sibling() {
                             let node: Option<rust_sitter::tree_sitter::Node> = None;
-                            return make_transform()(
-                                node.and_then(|n| n.utf8_text(source).ok()).unwrap(),
-                            );
+                            return < rust_sitter :: WithLeaf < u32 > as rust_sitter :: Extract < _ > > :: extract (node , source , * last_idx , Some (& | v | v . parse () . unwrap ())) ;
                         }
                     }
                 } else {
                     let node: Option<rust_sitter::tree_sitter::Node> = None;
-                    return make_transform()(node.and_then(|n| n.utf8_text(source).ok()).unwrap());
+                    return <rust_sitter::WithLeaf<u32> as rust_sitter::Extract<_>>::extract(
+                        node,
+                        source,
+                        *last_idx,
+                        Some(&|v| v.parse().unwrap()),
+                    );
                 }
             }
             #[allow(non_snake_case)]
@@ -84,7 +82,9 @@ mod grammar {
                         if let Some(name) = cursor.field_name() {
                             if name == "_bang" {
                                 let node: Option<rust_sitter::tree_sitter::Node> = Some(n);
-                                let out = rust_sitter::Extract::extract(node, source, *last_idx);
+                                let out = <() as rust_sitter::Extract<_>>::extract(
+                                    node, source, *last_idx, None,
+                                );
                                 if !cursor.goto_next_sibling() {
                                     *cursor_opt = None;
                                 };
@@ -92,19 +92,23 @@ mod grammar {
                                 return out;
                             } else {
                                 let node: Option<rust_sitter::tree_sitter::Node> = None;
-                                return rust_sitter::Extract::extract(node, source, *last_idx);
+                                return <() as rust_sitter::Extract<_>>::extract(
+                                    node, source, *last_idx, None,
+                                );
                             }
                         } else {
                             *last_idx = n.end_byte();
                         }
                         if !cursor.goto_next_sibling() {
                             let node: Option<rust_sitter::tree_sitter::Node> = None;
-                            return rust_sitter::Extract::extract(node, source, *last_idx);
+                            return <() as rust_sitter::Extract<_>>::extract(
+                                node, source, *last_idx, None,
+                            );
                         }
                     }
                 } else {
                     let node: Option<rust_sitter::tree_sitter::Node> = None;
-                    return rust_sitter::Extract::extract(node, source, *last_idx);
+                    return <() as rust_sitter::Extract<_>>::extract(node, source, *last_idx, None);
                 }
             }
             #[allow(non_snake_case)]
@@ -120,7 +124,9 @@ mod grammar {
                         if let Some(name) = cursor.field_name() {
                             if name == "value" {
                                 let node: Option<rust_sitter::tree_sitter::Node> = Some(n);
-                                let out = rust_sitter::Extract::extract(node, source, *last_idx);
+                                let out = <Box<Expr> as rust_sitter::Extract<_>>::extract(
+                                    node, source, *last_idx, None,
+                                );
                                 if !cursor.goto_next_sibling() {
                                     *cursor_opt = None;
                                 };
@@ -128,19 +134,25 @@ mod grammar {
                                 return out;
                             } else {
                                 let node: Option<rust_sitter::tree_sitter::Node> = None;
-                                return rust_sitter::Extract::extract(node, source, *last_idx);
+                                return <Box<Expr> as rust_sitter::Extract<_>>::extract(
+                                    node, source, *last_idx, None,
+                                );
                             }
                         } else {
                             *last_idx = n.end_byte();
                         }
                         if !cursor.goto_next_sibling() {
                             let node: Option<rust_sitter::tree_sitter::Node> = None;
-                            return rust_sitter::Extract::extract(node, source, *last_idx);
+                            return <Box<Expr> as rust_sitter::Extract<_>>::extract(
+                                node, source, *last_idx, None,
+                            );
                         }
                     }
                 } else {
                     let node: Option<rust_sitter::tree_sitter::Node> = None;
-                    return rust_sitter::Extract::extract(node, source, *last_idx);
+                    return <Box<Expr> as rust_sitter::Extract<_>>::extract(
+                        node, source, *last_idx, None,
+                    );
                 }
             }
             #[allow(non_snake_case)]
@@ -181,10 +193,11 @@ mod grammar {
             Err(errors)
         } else {
             use rust_sitter::Extract;
-            Ok(rust_sitter::Extract::extract(
+            Ok(<Expr as rust_sitter::Extract<_>>::extract(
                 Some(root_node),
                 input.as_bytes(),
                 0,
+                None,
             ))
         }
     }

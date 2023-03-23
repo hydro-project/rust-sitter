@@ -10,28 +10,78 @@ pub use tree_sitter_runtime_c2rust as tree_sitter;
 
 /// Defines the logic used to convert a node in a Tree Sitter tree to
 /// the corresponding Rust type.
-pub trait Extract {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8], last_idx: usize) -> Self;
+pub trait Extract<Output> {
+    type LeafFn: ?Sized;
+    fn extract(
+        node: Option<tree_sitter::Node>,
+        source: &[u8],
+        last_idx: usize,
+        leaf_fn: Option<&Self::LeafFn>,
+    ) -> Output;
 }
 
-impl Extract for () {
-    fn extract(_node: Option<tree_sitter::Node>, _source: &[u8], _last_idx: usize) {}
+pub struct WithLeaf<L> {
+    _phantom: std::marker::PhantomData<L>,
 }
 
-impl<T: Extract> Extract for Option<T> {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8], last_idx: usize) -> Option<T> {
-        node.map(|n| Extract::extract(Some(n), source, last_idx))
+impl<L> Extract<L> for WithLeaf<L> {
+    type LeafFn = dyn Fn(&str) -> L;
+
+    fn extract(
+        node: Option<tree_sitter::Node>,
+        source: &[u8],
+        _last_idx: usize,
+        leaf_fn: Option<&Self::LeafFn>,
+    ) -> L {
+        node.and_then(|n| n.utf8_text(source).ok())
+            .map(|s| leaf_fn.unwrap()(s))
+            .unwrap()
     }
 }
 
-impl<T: Extract> Extract for Box<T> {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
-        Box::new(Extract::extract(node, source, last_idx))
+impl Extract<()> for () {
+    type LeafFn = ();
+    fn extract(
+        _node: Option<tree_sitter::Node>,
+        _source: &[u8],
+        _last_idx: usize,
+        _leaf_fn: Option<&Self::LeafFn>,
+    ) {
     }
 }
 
-impl<T: Extract> Extract for Vec<T> {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8], mut last_idx: usize) -> Self {
+impl<T: Extract<U>, U> Extract<Option<U>> for Option<T> {
+    type LeafFn = T::LeafFn;
+    fn extract(
+        node: Option<tree_sitter::Node>,
+        source: &[u8],
+        last_idx: usize,
+        leaf_fn: Option<&Self::LeafFn>,
+    ) -> Option<U> {
+        node.map(|n| T::extract(Some(n), source, last_idx, leaf_fn))
+    }
+}
+
+impl<T: Extract<U>, U> Extract<Box<U>> for Box<T> {
+    type LeafFn = T::LeafFn;
+    fn extract(
+        node: Option<tree_sitter::Node>,
+        source: &[u8],
+        last_idx: usize,
+        leaf_fn: Option<&Self::LeafFn>,
+    ) -> Box<U> {
+        Box::new(T::extract(node, source, last_idx, leaf_fn))
+    }
+}
+
+impl<T: Extract<U>, U> Extract<Vec<U>> for Vec<T> {
+    type LeafFn = T::LeafFn;
+    fn extract(
+        node: Option<tree_sitter::Node>,
+        source: &[u8],
+        mut last_idx: usize,
+        leaf_fn: Option<&Self::LeafFn>,
+    ) -> Vec<U> {
         node.map(|node| {
             let mut cursor = node.walk();
             let mut out = vec![];
@@ -39,7 +89,7 @@ impl<T: Extract> Extract for Vec<T> {
                 loop {
                     let n = cursor.node();
                     if cursor.field_name().is_some() {
-                        out.push(Extract::extract(Some(n), source, last_idx));
+                        out.push(T::extract(Some(n), source, last_idx, leaf_fn));
                     }
 
                     last_idx = n.end_byte();
@@ -74,10 +124,16 @@ impl<T> Deref for Spanned<T> {
     }
 }
 
-impl<T: Extract> Extract for Spanned<T> {
-    fn extract(node: Option<tree_sitter::Node>, source: &[u8], last_idx: usize) -> Spanned<T> {
+impl<T: Extract<U>, U> Extract<Spanned<U>> for Spanned<T> {
+    type LeafFn = T::LeafFn;
+    fn extract(
+        node: Option<tree_sitter::Node>,
+        source: &[u8],
+        last_idx: usize,
+        leaf_fn: Option<&Self::LeafFn>,
+    ) -> Spanned<U> {
         Spanned {
-            value: Extract::extract(node, source, last_idx),
+            value: T::extract(node, source, last_idx, leaf_fn),
             span: node
                 .map(|n| (n.start_byte(), n.end_byte()))
                 .unwrap_or((last_idx, last_idx)),

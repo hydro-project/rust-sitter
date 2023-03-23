@@ -105,3 +105,27 @@ pub fn filter_inner_type(ty: &Type, skip_over: &HashSet<&str>) -> Type {
         ty.clone()
     }
 }
+
+pub fn wrap_leaf_type(ty: &Type, skip_over: &HashSet<&str>) -> Type {
+    let mut ty = ty.clone();
+    if let Type::Path(p) = &mut ty {
+        let type_segment = p.path.segments.last_mut().unwrap();
+        if skip_over.contains(type_segment.ident.to_string().as_str()) {
+            if let PathArguments::AngleBracketed(args) = &mut type_segment.arguments {
+                for a in args.args.iter_mut() {
+                    if let syn::GenericArgument::Type(t) = a {
+                        *t = wrap_leaf_type(t, skip_over);
+                    }
+                }
+
+                ty
+            } else {
+                panic!("Expected angle bracketed path");
+            }
+        } else {
+            parse_quote!(rust_sitter::WithLeaf<#ty>)
+        }
+    } else {
+        parse_quote!(rust_sitter::WithLeaf<#ty>)
+    }
+}

@@ -50,67 +50,74 @@ fn gen_field(
     let (inner_type_vec, is_vec) = try_extract_inner_type(&leaf_type, "Vec", &skip_over);
     let (inner_type_option, is_option) = try_extract_inner_type(&leaf_type, "Option", &skip_over);
 
-    if let Some(Expr::Lit(lit)) = pattern_param {
-        if let Lit::Str(s) = &lit.lit {
-            out.insert(
-                path.clone(),
-                json!({
-                    "type": "PATTERN",
-                    "value": s.value(),
-                }),
-            );
+    if !is_vec && !is_option {
+        if let Some(Expr::Lit(lit)) = pattern_param {
+            if let Lit::Str(s) = &lit.lit {
+                out.insert(
+                    path.clone(),
+                    json!({
+                        "type": "PATTERN",
+                        "value": s.value(),
+                    }),
+                );
 
-            (
-                json!({
-                    "type": "SYMBOL",
-                    "name": path
-                }),
-                is_option,
-            )
-        } else {
-            panic!("Expected string literal for pattern");
-        }
-    } else if let Some(Expr::Lit(lit)) = text_param {
-        if let Lit::Str(s) = &lit.lit {
-            out.insert(
-                path.clone(),
-                json!({
-                    "type": "STRING",
-                    "value": s.value(),
-                }),
-            );
-
-            (
-                json!({
-                    "type": "SYMBOL",
-                    "name": path
-                }),
-                is_option,
-            )
-        } else {
-            panic!("Expected string literal for text");
-        }
-    } else if !is_vec && !is_option {
-        let symbol_name = if let Type::Path(p) = filter_inner_type(&leaf_type, &skip_over) {
-            if p.path.segments.len() == 1 {
-                p.path.segments[0].ident.to_string()
+                (
+                    json!({
+                        "type": "SYMBOL",
+                        "name": path
+                    }),
+                    is_option,
+                )
             } else {
-                panic!("Expected a single segment path");
+                panic!("Expected string literal for pattern");
+            }
+        } else if let Some(Expr::Lit(lit)) = text_param {
+            if let Lit::Str(s) = &lit.lit {
+                out.insert(
+                    path.clone(),
+                    json!({
+                        "type": "STRING",
+                        "value": s.value(),
+                    }),
+                );
+
+                (
+                    json!({
+                        "type": "SYMBOL",
+                        "name": path
+                    }),
+                    is_option,
+                )
+            } else {
+                panic!("Expected string literal for text");
             }
         } else {
-            panic!("Expected a path");
-        };
+            let symbol_name = if let Type::Path(p) = filter_inner_type(&leaf_type, &skip_over) {
+                if p.path.segments.len() == 1 {
+                    p.path.segments[0].ident.to_string()
+                } else {
+                    panic!("Expected a single segment path");
+                }
+            } else {
+                panic!("Expected a path");
+            };
 
-        (
-            json!({
-                "type": "SYMBOL",
-                "name": symbol_name,
-            }),
-            false,
-        )
+            (
+                json!({
+                    "type": "SYMBOL",
+                    "name": symbol_name,
+                }),
+                false,
+            )
+        }
     } else if is_vec {
-        let (field_json, field_optional) =
-            gen_field(path.clone(), inner_type_vec, vec![], word_rule, out);
+        let (field_json, field_optional) = gen_field(
+            path.clone(),
+            inner_type_vec,
+            leaf_attr.iter().cloned().cloned().collect(),
+            word_rule,
+            out,
+        );
 
         let delimited_attr = leaf_attrs
             .iter()
