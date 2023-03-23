@@ -11,14 +11,8 @@ pub mod grammar {
             #[rust_sitter::leaf(text = ",")]
             ()
         )]
-        numbers: Spanned<Vec<Spanned<Number>>>,
-    }
-
-    #[derive(Debug)]
-    #[allow(dead_code)]
-    pub struct Number {
         #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
-        v: i32,
+        numbers: Spanned<Vec<Spanned<i32>>>,
     }
 
     #[rust_sitter::extra]
@@ -36,14 +30,8 @@ pub mod grammar2 {
     #[derive(Debug)]
     #[allow(dead_code)]
     pub struct NumberList {
-        numbers: Spanned<Vec<Spanned<Number>>>,
-    }
-
-    #[derive(Debug)]
-    #[allow(dead_code)]
-    pub struct Number {
         #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
-        v: i32,
+        numbers: Spanned<Vec<Spanned<i32>>>,
     }
 
     #[rust_sitter::extra]
@@ -65,16 +53,10 @@ pub mod grammar3 {
             #[rust_sitter::leaf(text = ",")]
             ()
         )]
-        numbers: Spanned<Vec<Spanned<Option<Number>>>>,
+        #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+        numbers: Spanned<Vec<Spanned<Option<i32>>>>,
         #[rust_sitter::skip(123)]
         metadata: u32,
-    }
-
-    #[derive(Debug)]
-    #[allow(dead_code)]
-    pub struct Number {
-        #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
-        v: i32,
     }
 
     #[rust_sitter::extra]

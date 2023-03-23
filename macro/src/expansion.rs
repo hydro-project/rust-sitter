@@ -28,10 +28,6 @@ fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) 
     let extract_ident = Ident::new(&format!("extract_{path}"), Span::call_site());
     let leaf_type = leaf.ty;
 
-    let leaf_text_expr: Expr = syn::parse_quote! {
-        node.and_then(|n| n.utf8_text(source).ok())
-    };
-
     let leaf_attr = leaf
         .attrs
         .iter()
@@ -54,34 +50,21 @@ fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) 
 
     let (leaf_stmts, leaf_expr): (Vec<Stmt>, Expr) = match transform_param {
         Some(closure) => {
-            let (_, is_vec) = try_extract_inner_type(&leaf_type, "Vec", &skip_over);
-            let (inner_type_option, is_option) =
-                try_extract_inner_type(&leaf_type, "Option", &skip_over);
-
-            if is_vec {
-                panic!("Vec or Spanned of leaves is not supported");
-            }
+            let mut non_leaf = HashSet::new();
+            non_leaf.insert("Spanned");
+            non_leaf.insert("Box");
+            non_leaf.insert("Option");
+            non_leaf.insert("Vec");
+            let wrapped_leaf_type = wrap_leaf_type(&leaf_type, &non_leaf);
 
             (
-                vec![syn::parse_quote! {
-                    fn make_transform() -> impl Fn(&str) -> #inner_type_option {
-                        #closure
-                    }
-                }],
-                if is_option {
-                    syn::parse_quote! {
-                        #leaf_text_expr.map(|t| make_transform()(t))
-                    }
-                } else {
-                    syn::parse_quote! {
-                        make_transform()(#leaf_text_expr.unwrap())
-                    }
-                },
+                vec![],
+                syn::parse_quote!(<#wrapped_leaf_type as rust_sitter::Extract<_>>::extract(node, source, *last_idx, Some(&#closure))),
             )
         }
         None => (
             vec![],
-            syn::parse_quote!(rust_sitter::Extract::extract(node, source, *last_idx)),
+            syn::parse_quote!(<#leaf_type as rust_sitter::Extract<_>>::extract(node, source, *last_idx, None)),
         ),
     };
 
@@ -320,9 +303,11 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
 
                 let enum_name = &e.ident;
                 let extract_impl: Item = syn::parse_quote! {
-                    impl rust_sitter::Extract for #enum_name {
+                    impl rust_sitter::Extract<#enum_name> for #enum_name {
+                        type LeafFn = ();
+
                         #[allow(non_snake_case)]
-                        fn extract(node: Option<rust_sitter::tree_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
+                        fn extract(node: Option<rust_sitter::tree_sitter::Node>, source: &[u8], last_idx: usize, _leaf_fn: Option<&Self::LeafFn>) -> Self {
                             let node = node.unwrap();
                             #(#impl_body)*
                             match node.child(0).unwrap().kind() {
@@ -357,9 +342,11 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                     Ident::new(&format!("extract_{struct_name}"), Span::call_site());
 
                 let extract_impl: Item = syn::parse_quote! {
-                    impl rust_sitter::Extract for #struct_name {
+                    impl rust_sitter::Extract<#struct_name> for #struct_name {
+                        type LeafFn = ();
+
                         #[allow(non_snake_case)]
-                        fn extract(node: Option<rust_sitter::tree_sitter::Node>, source: &[u8], last_idx: usize) -> Self {
+                        fn extract(node: Option<rust_sitter::tree_sitter::Node>, source: &[u8], last_idx: usize, _leaf_fn: Option<&Self::LeafFn>) -> Self {
                             let node = node.unwrap();
                             #(#impl_body)*
                             #extract_ident(node, source)
@@ -406,7 +393,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
               Err(errors)
           } else {
               use rust_sitter::Extract;
-              Ok(rust_sitter::Extract::extract(Some(root_node), input.as_bytes(), 0))
+              Ok(<#root_type as rust_sitter::Extract<_>>::extract(Some(root_node), input.as_bytes(), 0, None))
           }
       }
   });

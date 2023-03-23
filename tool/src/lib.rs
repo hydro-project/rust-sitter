@@ -440,12 +440,8 @@ mod tests {
 
                 #[rust_sitter::language]
                 pub struct NumberList {
-                    numbers: Vec<Spanned<Number>>,
-                }
-
-                pub struct Number {
                     #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
-                    v: i32
+                    numbers: Vec<Spanned<i32>>,
                 }
 
                 #[rust_sitter::extra]
