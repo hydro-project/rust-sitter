@@ -94,9 +94,9 @@ pub fn build_parsers(root_file: &Path) {
         cc::Build::new()
             .include(&dir)
             .include(&sysroot_dir)
-            .flag("-Wno-unused-label")
-            .flag("-Wno-unused-but-set-variable")
-            .flag("-Wno-unknown-warning-option")
+            .flag_if_supported("-Wno-unused-label")
+            .flag_if_supported("-Wno-unused-but-set-variable")
+            .flag_if_supported("-Wno-unknown-warning-option")
             .file(dir.path().join("parser.c"))
             .compile(&grammar_name);
     });
