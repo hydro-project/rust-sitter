@@ -18,6 +18,28 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+  test-wasm:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install wasm32 target
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: wasm32-unknown-unknown
+    - name: Install WebAssembly test runner
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: wasm-bindgen-cli --version 0.2.83
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      env:
+        CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
+      with:
+        command: test
+        args: -p rust-sitter-example --target wasm32-unknown-unknown --tests --no-fail-fast
   lint:
     runs-on: ubuntu-latest
     steps:
