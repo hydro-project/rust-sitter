@@ -157,7 +157,7 @@ mod grammar {
     extern "C" {
         fn tree_sitter_test() -> rust_sitter::tree_sitter::Language;
     }
-    fn language() -> rust_sitter::tree_sitter::Language {
+    pub fn language() -> rust_sitter::tree_sitter::Language {
         unsafe { tree_sitter_test() }
     }
     pub fn parse(

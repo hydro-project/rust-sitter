@@ -370,7 +370,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
     });
 
     transformed.push(syn::parse_quote! {
-        fn language() -> rust_sitter::tree_sitter::Language {
+        pub fn language() -> rust_sitter::tree_sitter::Language {
             unsafe { #tree_sitter_ident() }
         }
     });
