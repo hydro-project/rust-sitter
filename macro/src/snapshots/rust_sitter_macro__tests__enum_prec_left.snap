@@ -13,7 +13,7 @@ mod grammar {
         fn extract(
             node: Option<rust_sitter::tree_sitter::Node>,
             source: &[u8],
-            last_idx: usize,
+            _last_idx: usize,
             _leaf_fn: Option<&Self::LeafFn>,
         ) -> Self {
             let node = node.unwrap();
@@ -224,10 +224,19 @@ mod grammar {
                     extract_Expression_Sub_2(&mut cursor, source, &mut last_idx),
                 )
             }
-            match node.child(0).unwrap().kind() {
-                "Expression_Number" => extract_Expression_Number(node.child(0).unwrap(), source),
-                "Expression_Sub" => extract_Expression_Sub(node.child(0).unwrap(), source),
-                _ => panic!(),
+            let mut cursor = node.walk();
+            assert!(cursor.goto_first_child());
+            loop {
+                let n = cursor.node();
+                match n.kind() {
+                    "Expression_Number" => return extract_Expression_Number(n, source),
+                    "Expression_Sub" => return extract_Expression_Sub(n, source),
+                    _ => {
+                        if !cursor.goto_next_sibling() {
+                            panic!("Could not find a child corresponding to any enum branch")
+                        }
+                    }
+                }
             }
         }
     }

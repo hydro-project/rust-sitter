@@ -288,7 +288,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                         let extract_ident =
                             Ident::new(&format!("extract_{variant_path}"), Span::call_site());
                         syn::parse_quote! {
-                            #variant_path => #extract_ident(node.child(0).unwrap(), source)
+                            #variant_path => return #extract_ident(n, source)
                         }
                     })
                     .collect();
@@ -307,12 +307,20 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                         type LeafFn = ();
 
                         #[allow(non_snake_case)]
-                        fn extract(node: Option<rust_sitter::tree_sitter::Node>, source: &[u8], last_idx: usize, _leaf_fn: Option<&Self::LeafFn>) -> Self {
+                        fn extract(node: Option<rust_sitter::tree_sitter::Node>, source: &[u8], _last_idx: usize, _leaf_fn: Option<&Self::LeafFn>) -> Self {
                             let node = node.unwrap();
                             #(#impl_body)*
-                            match node.child(0).unwrap().kind() {
-                                #(#match_cases),*,
-                                _ => panic!()
+
+                            let mut cursor = node.walk();
+                            assert!(cursor.goto_first_child());
+                            loop {
+                                let n = cursor.node();
+                                match n.kind() {
+                                    #(#match_cases),*,
+                                    _ => if !cursor.goto_next_sibling() {
+                                        panic!("Could not find a child corresponding to any enum branch")
+                                    }
+                                }
                             }
                         }
                     }

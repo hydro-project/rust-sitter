@@ -35,6 +35,8 @@ mod tests {
     fn successful_parses() {
         assert_eq!(grammar::parse("1").unwrap(), Expression::Number(1));
 
+        assert_eq!(grammar::parse(" 1").unwrap(), Expression::Number(1));
+
         assert_eq!(
             grammar::parse("1 - 2").unwrap(),
             Expression::Sub(
