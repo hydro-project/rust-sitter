@@ -94,7 +94,7 @@ pub fn build_parsers(root_file: &Path) {
         cc::Build::new()
             .include(&dir)
             .include(&sysroot_dir)
-            .flag_if_supported("-Wno-everthing")
+            .flag_if_supported("-Wno-everything")
             .file(dir.path().join("parser.c"))
             .compile(&grammar_name);
     });
