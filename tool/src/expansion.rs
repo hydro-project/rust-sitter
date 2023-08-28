@@ -299,7 +299,7 @@ fn gen_struct_or_variant(
                     .map(|v| v.to_string())
                     .unwrap_or(format!("{i}"));
 
-                Some(gen_field_optional(&path, &field, word_rule, out, ident_str))
+                Some(gen_field_optional(&path, field, word_rule, out, ident_str))
             }
         })
         .collect::<Vec<Value>>();
