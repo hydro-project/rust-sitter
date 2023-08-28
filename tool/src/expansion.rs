@@ -246,6 +246,42 @@ fn gen_struct_or_variant(
     out: &mut Map<String, Value>,
     word_rule: &mut Option<String>,
 ) {
+    fn gen_field_optional(
+        path: &str,
+        field: &Field,
+        word_rule: &mut Option<String>,
+        out: &mut Map<String, Value>,
+        ident_str: String,
+    ) -> Value {
+        let (field_contents, is_option) = gen_field(
+            format!("{path}_{ident_str}"),
+            field.ty.clone(),
+            field.attrs.clone(),
+            word_rule,
+            out,
+        );
+
+        let core = json!({
+            "type": "FIELD",
+            "name": ident_str,
+            "content": field_contents
+        });
+
+        if is_option {
+            json!({
+                "type": "CHOICE",
+                "members": [
+                    {
+                        "type": "BLANK"
+                    },
+                    core
+                ]
+            })
+        } else {
+            core
+        }
+    }
+
     let children = fields
         .iter()
         .enumerate()
@@ -263,33 +299,7 @@ fn gen_struct_or_variant(
                     .map(|v| v.to_string())
                     .unwrap_or(format!("{i}"));
 
-                let (field_contents, is_option) = gen_field(
-                    format!("{}_{}", path.clone(), ident_str),
-                    field.ty.clone(),
-                    field.attrs.clone(),
-                    word_rule,
-                    out,
-                );
-
-                let core = json!({
-                    "type": "FIELD",
-                    "name": ident_str,
-                    "content": field_contents
-                });
-
-                if is_option {
-                    Some(json!({
-                        "type": "CHOICE",
-                        "members": [
-                            {
-                                "type": "BLANK"
-                            },
-                            core
-                        ]
-                    }))
-                } else {
-                    Some(core)
-                }
+                Some(gen_field_optional(&path, &field, word_rule, out, ident_str))
             }
         })
         .collect::<Vec<Value>>();
@@ -312,10 +322,25 @@ fn gen_struct_or_variant(
 
     let prec_right_param = prec_right_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
 
-    let seq_rule = json!({
-        "type": "SEQ",
-        "members": children
-    });
+    let base_rule = match fields {
+        Fields::Unit => {
+            let dummy_field = Field {
+                attrs: attrs.clone(),
+                vis: Visibility::Inherited,
+                ident: None,
+                colon_token: None,
+                ty: Type::Tuple(TypeTuple {
+                    paren_token: Default::default(),
+                    elems: Punctuated::new(),
+                }),
+            };
+            gen_field_optional(&path, &dummy_field, word_rule, out, "unit".to_owned())
+        }
+        _ => json!({
+            "type": "SEQ",
+            "members": children
+        }),
+    };
 
     let rule = if let Some(Expr::Lit(lit)) = prec_param {
         if prec_left_attr.is_some() || prec_right_attr.is_some() {
@@ -326,7 +351,7 @@ fn gen_struct_or_variant(
             json!({
                 "type": "PREC",
                 "value": i.base10_parse::<u32>().unwrap(),
-                "content": seq_rule
+                "content": base_rule
             })
         } else {
             panic!("Expected integer literal for precedence");
@@ -340,7 +365,7 @@ fn gen_struct_or_variant(
             json!({
                 "type": "PREC_LEFT",
                 "value": i.base10_parse::<u32>().unwrap(),
-                "content": seq_rule
+                "content": base_rule
             })
         } else {
             panic!("Expected integer literal for precedence");
@@ -350,13 +375,13 @@ fn gen_struct_or_variant(
             json!({
                 "type": "PREC_RIGHT",
                 "value": i.base10_parse::<u32>().unwrap(),
-                "content": seq_rule
+                "content": base_rule
             })
         } else {
             panic!("Expected integer literal for precedence");
         }
     } else {
-        seq_rule
+        base_rule
     };
 
     out.insert(path, rule);
