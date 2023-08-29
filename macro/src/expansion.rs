@@ -1,13 +1,18 @@
 use std::collections::HashSet;
 
+use crate::errors::IteratorExt as _;
 use proc_macro2::Span;
 use quote::ToTokens;
 use rust_sitter_common::*;
 use syn::{parse::Parse, punctuated::Punctuated, *};
 
 fn is_sitter_attr(attr: &Attribute) -> bool {
-    let ident = &attr.path.segments.iter().next().unwrap().ident;
-    ident == "rust_sitter"
+    attr.path
+        .segments
+        .iter()
+        .next()
+        .map(|segment| segment.ident == "rust_sitter")
+        .unwrap_or(false)
 }
 
 enum ParamOrField {
@@ -116,7 +121,7 @@ fn gen_struct_or_variant(
     variant_ident: Option<Ident>,
     containing_type: Ident,
     out: &mut Vec<Item>,
-) {
+) -> Result<()> {
     fields.iter().enumerate().for_each(|(i, field)| {
         let ident_str = field
             .ident
@@ -151,7 +156,7 @@ fn gen_struct_or_variant(
                 .iter()
                 .find(|attr| attr.path == syn::parse_quote!(rust_sitter::skip))
             {
-                skip_attrs.parse_args::<syn::Expr>().unwrap()
+                skip_attrs.parse_args::<syn::Expr>()?
             } else {
                 let ident_str = field
                     .ident
@@ -169,10 +174,7 @@ fn gen_struct_or_variant(
                 }
             };
 
-            if field.ident.is_none() {
-                ParamOrField::Param(expr)
-            } else {
-                let field_name = field.ident.as_ref().unwrap();
+            let field = if let Some(field_name) = &field.ident {
                 have_named_field = true;
                 ParamOrField::Field(FieldValue {
                     attrs: vec![],
@@ -180,9 +182,12 @@ fn gen_struct_or_variant(
                     colon_token: Some(Token![:](Span::call_site())),
                     expr,
                 })
-            }
+            } else {
+                ParamOrField::Param(expr)
+            };
+            Ok(field)
         })
-        .collect::<Vec<ParamOrField>>();
+        .sift::<Vec<ParamOrField>>()?;
 
     let construct_expr: syn::Expr = if let Some(variant_ident) = variant_ident {
         if have_named_field {
@@ -220,9 +225,11 @@ fn gen_struct_or_variant(
             #construct_expr
         }
     });
+
+    Ok(())
 }
 
-pub fn expand_grammar(input: ItemMod) -> ItemMod {
+pub fn expand_grammar(input: ItemMod) -> Result<ItemMod> {
     let grammar_name = input
         .attrs
         .iter()
@@ -234,17 +241,26 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                     lit: Lit::Str(s),
                 })) = grammar_name_expr
                 {
-                    Some(s.value())
+                    Some(Ok(s.value()))
                 } else {
-                    panic!("Expected string literal for grammar name");
+                    Some(Err(syn::Error::new(
+                        Span::call_site(),
+                        "Expected a string literal grammar name",
+                    )))
                 }
             } else {
                 None
             }
         })
-        .expect("Each grammar must have a name");
+        .transpose()?
+        .ok_or_else(|| syn::Error::new(Span::call_site(), "Each grammar must have a name"))?;
 
-    let (brace, new_contents) = input.content.unwrap();
+    let (brace, new_contents) = input.content.ok_or_else(|| {
+        syn::Error::new(
+            Span::call_site(),
+            "Expected the module to have inline contents (`mod my_module { .. }` syntax)",
+        )
+    })?;
 
     let root_type = new_contents
         .iter()
@@ -262,15 +278,20 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
             }
             _ => None,
         })
-        .expect("Each parser must have the root type annotated with `#[rust_sitter::language]`");
+        .ok_or_else(|| {
+            syn::Error::new(
+                Span::call_site(),
+                "Each parser must have the root type annotated with `#[rust_sitter::language]`",
+            )
+        })?;
 
     let mut transformed: Vec<Item> = new_contents
         .iter()
         .cloned()
-        .flat_map(|c| match c {
+        .map(|c| match c {
             Item::Enum(mut e) => {
                 let mut impl_body = vec![];
-                e.variants.iter().for_each(|v| {
+                e.variants.iter().map(|v| {
                     gen_struct_or_variant(
                         format!("{}_{}", e.ident, v.ident),
                         v.fields.clone(),
@@ -278,7 +299,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                         e.ident.clone(),
                         &mut impl_body,
                     )
-                });
+                }).sift::<()>()?;
 
                 let match_cases: Vec<Arm> = e
                     .variants
@@ -326,7 +347,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                     }
                 };
 
-                vec![Item::Enum(e), extract_impl]
+                Ok(vec![Item::Enum(e), extract_impl])
             }
 
             Item::Struct(mut s) => {
@@ -338,7 +359,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                     None,
                     s.ident.clone(),
                     &mut impl_body,
-                );
+                )?;
 
                 s.attrs.retain(|a| !is_sitter_attr(a));
                 s.fields.iter_mut().for_each(|f| {
@@ -362,12 +383,12 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                     }
                 };
 
-                vec![Item::Struct(s), extract_impl]
+                Ok(vec![Item::Struct(s), extract_impl])
             }
 
-            o => vec![o],
+            o => Ok(vec![o]),
         })
-        .collect();
+        .sift::<Vec<_>>()?.into_iter().flatten().collect();
 
     let tree_sitter_ident = Ident::new(&format!("tree_sitter_{grammar_name}"), Span::call_site());
 
@@ -408,12 +429,12 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
 
     let mut filtered_attrs = input.attrs;
     filtered_attrs.retain(|a| !is_sitter_attr(a));
-    ItemMod {
+    Ok(ItemMod {
         attrs: filtered_attrs,
         vis: input.vis,
         mod_token: input.mod_token,
         ident: input.ident,
         content: Some((brace, transformed)),
         semi: input.semi,
-    }
+    })
 }
