@@ -50,13 +50,31 @@ pub fn extra(
 /// such as a number, then the `transform` argument can be used to specify a function
 /// that will be called with the token's text.
 ///
-/// ## Example
+/// The attribute can also be applied to a struct or enum variant with no fields.
+///
+/// ## Examples
+///
+/// Using the `leaf` attribute on a field:
 /// ```ignore
 /// Number(
 ///     #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
 ///     u32
 /// )
 /// ```
+///
+/// Using the attribute on a unit struct or unit enum variant:
+/// ```ignore
+/// #[rust_sitter::leaf(text = "9")]
+/// struct BigDigit;
+///
+/// enum SmallDigit {
+///     #[rust_sitter::leaf(text = "0")]
+///     Zero,
+///     #[rust_sitter::leaf(text = "1")]
+///     One,
+/// }
+/// ```
+///
 pub fn leaf(
     _attr: proc_macro::TokenStream,
     item: proc_macro::TokenStream,

@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use proc_macro2::Span;
-use quote::ToTokens;
+use quote::{quote, ToTokens};
 use rust_sitter_common::*;
 use syn::{parse::Parse, punctuated::Punctuated, *};
 
@@ -115,28 +115,40 @@ fn gen_struct_or_variant(
     fields: Fields,
     variant_ident: Option<Ident>,
     containing_type: Ident,
+    container_attrs: Vec<Attribute>,
     out: &mut Vec<Item>,
 ) {
-    fields.iter().enumerate().for_each(|(i, field)| {
-        let ident_str = field
-            .ident
-            .as_ref()
-            .map(|v| v.to_string())
-            .unwrap_or(format!("{i}"));
+    if fields == Fields::Unit {
+        let dummy_field = Field {
+            attrs: container_attrs,
+            vis: Visibility::Inherited,
+            ident: None,
+            colon_token: None,
+            ty: Type::Verbatim(quote!(())), // unit type.
+        };
+        gen_field(format!("{path}_unit"), "unit".to_owned(), dummy_field, out);
+    } else {
+        fields.iter().enumerate().for_each(|(i, field)| {
+            let ident_str = field
+                .ident
+                .as_ref()
+                .map(|v| v.to_string())
+                .unwrap_or(format!("{i}"));
 
-        if !field
-            .attrs
-            .iter()
-            .any(|attr| attr.path == syn::parse_quote!(rust_sitter::skip))
-        {
-            gen_field(
-                format!("{}_{}", path.clone(), ident_str),
-                ident_str,
-                field.clone(),
-                out,
-            );
-        }
-    });
+            if !field
+                .attrs
+                .iter()
+                .any(|attr| attr.path == syn::parse_quote!(rust_sitter::skip))
+            {
+                gen_field(
+                    format!("{}_{}", path, ident_str),
+                    ident_str,
+                    field.clone(),
+                    out,
+                );
+            }
+        });
+    }
 
     let extract_ident = Ident::new(&format!("extract_{path}"), Span::call_site());
 
@@ -159,10 +171,7 @@ fn gen_struct_or_variant(
                     .map(|v| v.to_string())
                     .unwrap_or(format!("{i}"));
 
-                let ident = Ident::new(
-                    &format!("extract_{}_{}", path.clone(), ident_str),
-                    Span::call_site(),
-                );
+                let ident = Ident::new(&format!("extract_{path}_{ident_str}"), Span::call_site());
 
                 syn::parse_quote! {
                     #ident(&mut cursor, source, &mut last_idx)
@@ -184,25 +193,36 @@ fn gen_struct_or_variant(
         })
         .collect::<Vec<ParamOrField>>();
 
-    let construct_expr: syn::Expr = if let Some(variant_ident) = variant_ident {
-        if have_named_field {
-            syn::parse_quote! {
-                #containing_type::#variant_ident {
-                    #(#children_parsed),*
+    let construct_name = match variant_ident {
+        Some(ident) => quote! {
+            #containing_type::#ident
+        },
+        None => quote! {
+            #containing_type
+        },
+    };
+
+    let construct_expr = {
+        match &fields {
+            Fields::Unit => {
+                let ident = Ident::new(&format!("extract_{path}_unit"), Span::call_site());
+                quote! {
+                    {
+                        #ident(&mut cursor, source, &mut last_idx);
+                        #construct_name
+                    }
                 }
             }
-        } else {
-            syn::parse_quote! {
-                #containing_type::#variant_ident(
+            Fields::Named(_) => quote! {
+                #construct_name {
+                    #(#children_parsed),*
+                }
+            },
+            Fields::Unnamed(_) => quote! {
+                #construct_name(
                     #(#children_parsed),*
                 )
-            }
-        }
-    } else {
-        syn::parse_quote! {
-            #containing_type {
-                #(#children_parsed),*
-            }
+            },
         }
     };
 
@@ -276,6 +296,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                         v.fields.clone(),
                         Some(v.ident.clone()),
                         e.ident.clone(),
+                        v.attrs.clone(),
                         &mut impl_body,
                     )
                 });
@@ -337,6 +358,7 @@ pub fn expand_grammar(input: ItemMod) -> ItemMod {
                     s.fields.clone(),
                     None,
                     s.ident.clone(),
+                    s.attrs.clone(),
                     &mut impl_body,
                 );
 
