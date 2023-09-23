@@ -44,34 +44,41 @@ use tree_sitter_cli::generate;
 pub fn build_parsers(root_file: &Path) {
     use std::env;
     let out_dir = env::var("OUT_DIR").unwrap();
-    let grammar_dir = Path::new(out_dir.as_str()).join("grammars");
-    std::fs::DirBuilder::new()
-        .recursive(true)
-        .create(grammar_dir.clone())
-        .expect("Couldn't create grammar JSON directory");
-
+    let emit_artifacts: bool = env::var("RUST_SITTER_EMIT_ARTIFACTS").map(|s| s.parse().unwrap_or(false)).unwrap_or(false);
     generate_grammars(root_file).iter().for_each(|grammar| {
-        let dir = tempfile::Builder::new()
-            .prefix("grammar")
-            .tempdir()
-            .unwrap();
-        let grammar_file = dir.path().join("parser.c");
-        let mut f = std::fs::File::create(grammar_file).unwrap();
-
         let (grammar_name, grammar_c) =
             generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        
+        let dir = if emit_artifacts {
+            let grammar_dir = Path::new(out_dir.as_str()).join(format!("grammar_{grammar_name}",));
+            std::fs::remove_dir_all(&grammar_dir).expect("Couldn't clear old artifacts");
+            std::fs::DirBuilder::new()
+                .recursive(true)
+                .create(grammar_dir.clone())
+                .expect("Couldn't create grammar JSON directory");
+            grammar_dir
+        } else {
+            tempfile::Builder::new()
+            .prefix("grammar")
+            .tempdir()
+            .unwrap().path().into()
+        };
+
+        let grammar_file = dir.join("parser.c");
+        let mut f = std::fs::File::create(grammar_file).unwrap();
+
         f.write_all(grammar_c.as_bytes()).unwrap();
         drop(f);
 
         // emit grammar into the build out_dir
         let mut grammar_json_file =
-            std::fs::File::create(grammar_dir.join(format!("{grammar_name}.json"))).unwrap();
+            std::fs::File::create(dir.join(format!("{grammar_name}.json"))).unwrap();
         grammar_json_file
             .write_all(serde_json::to_string_pretty(grammar).unwrap().as_bytes())
             .unwrap();
         drop(grammar_json_file);
 
-        let header_dir = dir.path().join("tree_sitter");
+        let header_dir = dir.join("tree_sitter");
         std::fs::create_dir(&header_dir).unwrap();
         let mut parser_file = std::fs::File::create(header_dir.join("parser.h")).unwrap();
         parser_file
@@ -79,7 +86,7 @@ pub fn build_parsers(root_file: &Path) {
             .unwrap();
         drop(parser_file);
 
-        let sysroot_dir = dir.path().join("sysroot");
+        let sysroot_dir = dir.join("sysroot");
         if env::var("TARGET").unwrap().starts_with("wasm32") {
             std::fs::create_dir(&sysroot_dir).unwrap();
             let mut stdint = std::fs::File::create(sysroot_dir.join("stdint.h")).unwrap();
@@ -115,7 +122,7 @@ pub fn build_parsers(root_file: &Path) {
             // .flag_if_supported("-Wno-unused-but-set-variable")
             // .flag_if_supported("-Wno-trigraphs")
             .flag_if_supported("-Wno-everything");
-        c_config.file(dir.path().join("parser.c"));
+        c_config.file(dir.join("parser.c"));
 
         c_config.compile(&grammar_name);
     });
