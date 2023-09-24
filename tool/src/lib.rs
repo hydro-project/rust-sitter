@@ -44,7 +44,9 @@ use tree_sitter_cli::generate;
 pub fn build_parsers(root_file: &Path) {
     use std::env;
     let out_dir = env::var("OUT_DIR").unwrap();
-    let emit_artifacts: bool = env::var("RUST_SITTER_EMIT_ARTIFACTS").map(|s| s.parse().unwrap_or(false)).unwrap_or(false);
+    let emit_artifacts: bool = env::var("RUST_SITTER_EMIT_ARTIFACTS")
+        .map(|s| s.parse().unwrap_or(false))
+        .unwrap_or(false);
     generate_grammars(root_file).iter().for_each(|grammar| {
         let (grammar_name, grammar_c) =
             generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
