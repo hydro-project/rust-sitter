@@ -48,7 +48,11 @@ pub fn build_parsers(root_file: &Path) {
     generate_grammars(root_file).iter().for_each(|grammar| {
         let (grammar_name, grammar_c) =
             generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
-        
+        let tempfile = tempfile::Builder::new()
+            .prefix("grammar")
+            .tempdir()
+            .unwrap();
+
         let dir = if emit_artifacts {
             let grammar_dir = Path::new(out_dir.as_str()).join(format!("grammar_{grammar_name}",));
             std::fs::remove_dir_all(&grammar_dir).expect("Couldn't clear old artifacts");
@@ -58,10 +62,7 @@ pub fn build_parsers(root_file: &Path) {
                 .expect("Couldn't create grammar JSON directory");
             grammar_dir
         } else {
-            tempfile::Builder::new()
-            .prefix("grammar")
-            .tempdir()
-            .unwrap().path().into()
+            tempfile.path().into()
         };
 
         let grammar_file = dir.join("parser.c");
@@ -117,10 +118,10 @@ pub fn build_parsers(root_file: &Path) {
         let mut c_config = cc::Build::new();
         c_config.include(&dir).include(&sysroot_dir);
         c_config
-            // .flag_if_supported("-Wno-unused-label")
-            // .flag_if_supported("-Wno-unused-parameter")
-            // .flag_if_supported("-Wno-unused-but-set-variable")
-            // .flag_if_supported("-Wno-trigraphs")
+            .flag_if_supported("-Wno-unused-label")
+            .flag_if_supported("-Wno-unused-parameter")
+            .flag_if_supported("-Wno-unused-but-set-variable")
+            .flag_if_supported("-Wno-trigraphs")
             .flag_if_supported("-Wno-everything");
         c_config.file(dir.join("parser.c"));
 
