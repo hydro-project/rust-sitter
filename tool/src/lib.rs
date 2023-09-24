@@ -45,7 +45,10 @@ pub fn build_parsers(root_file: &Path) {
     use std::env;
     let out_dir = env::var("OUT_DIR").unwrap();
     let grammar_dir = Path::new(out_dir.as_str()).join("grammars");
-    std::fs::DirBuilder::new().recursive(true).create(grammar_dir.clone()).expect("Couldn't create grammar JSON directory");
+    std::fs::DirBuilder::new()
+        .recursive(true)
+        .create(grammar_dir.clone())
+        .expect("Couldn't create grammar JSON directory");
 
     generate_grammars(root_file).iter().for_each(|grammar| {
         let dir = tempfile::Builder::new()
@@ -55,13 +58,17 @@ pub fn build_parsers(root_file: &Path) {
         let grammar_file = dir.path().join("parser.c");
         let mut f = std::fs::File::create(grammar_file).unwrap();
 
-        let (grammar_name, grammar_c) = generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        let (grammar_name, grammar_c) =
+            generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
         f.write_all(grammar_c.as_bytes()).unwrap();
         drop(f);
 
         // emit grammar into the build out_dir
-        let mut grammar_json_file = std::fs::File::create(grammar_dir.join(format!("{grammar_name}.json"))).unwrap();
-        grammar_json_file.write_all(serde_json::to_string_pretty(grammar).unwrap().as_bytes()).unwrap();
+        let mut grammar_json_file =
+            std::fs::File::create(grammar_dir.join(format!("{grammar_name}.json"))).unwrap();
+        grammar_json_file
+            .write_all(serde_json::to_string_pretty(grammar).unwrap().as_bytes())
+            .unwrap();
         drop(grammar_json_file);
 
         let header_dir = dir.path().join("tree_sitter");
@@ -100,12 +107,17 @@ pub fn build_parsers(root_file: &Path) {
             drop(stdbool);
         }
 
-        cc::Build::new()
-            .include(&dir)
-            .include(&sysroot_dir)
-            .flag_if_supported("-Wno-everything")
-            .file(dir.path().join("parser.c"))
-            .compile(&grammar_name);
+        let mut c_config = cc::Build::new();
+        c_config.include(&dir).include(&sysroot_dir);
+        c_config
+            // .flag_if_supported("-Wno-unused-label")
+            // .flag_if_supported("-Wno-unused-parameter")
+            // .flag_if_supported("-Wno-unused-but-set-variable")
+            // .flag_if_supported("-Wno-trigraphs")
+            .flag_if_supported("-Wno-everything");
+        c_config.file(dir.path().join("parser.c"));
+
+        c_config.compile(&grammar_name);
     });
 }
 
