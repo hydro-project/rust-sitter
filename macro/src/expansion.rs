@@ -73,44 +73,14 @@ fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) 
         ),
     };
 
+    // TODO: leaf_stmts is always empty... for now. Are there plans for this? Otherwise the code can be simplified even further!
     out.push(syn::parse_quote! {
         #[allow(non_snake_case)]
         #[allow(clippy::unused_unit)]
         fn #extract_ident(cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>, source: &[u8], last_idx: &mut usize) -> #leaf_type {
             #(#leaf_stmts)*
 
-            if let Some(cursor) = cursor_opt.as_mut() {
-                loop {
-                    let n = cursor.node();
-                    if let Some(name) = cursor.field_name() {
-                        if name == #ident_str {
-                            let node: Option<rust_sitter::tree_sitter::Node> = Some(n);
-                            let out = #leaf_expr;
-
-                            if !cursor.goto_next_sibling() {
-                                *cursor_opt = None;
-                            };
-
-                            *last_idx = n.end_byte();
-
-                            return out;
-                        } else {
-                            let node: Option<rust_sitter::tree_sitter::Node> = None;
-                            return #leaf_expr;
-                        }
-                    } else {
-                        *last_idx = n.end_byte();
-                    }
-
-                    if !cursor.goto_next_sibling() {
-                        let node: Option<rust_sitter::tree_sitter::Node> = None;
-                        return #leaf_expr;
-                    }
-                }
-            } else {
-                let node: Option<rust_sitter::tree_sitter::Node> = None;
-                return #leaf_expr;
-            }
+            rust_sitter::extract_field(cursor_opt, last_idx, #ident_str, move |node, last_idx| #leaf_expr)
         }
     });
 }
@@ -179,7 +149,7 @@ fn gen_struct_or_variant(
                 let ident = Ident::new(&format!("extract_{path}_{ident_str}"), Span::call_site());
 
                 syn::parse_quote! {
-                    #ident(&mut cursor, source, &mut last_idx)
+                    #ident(cursor, source, last_idx)
                 }
             };
 
@@ -213,7 +183,7 @@ fn gen_struct_or_variant(
                 let ident = Ident::new(&format!("extract_{path}_unit"), Span::call_site());
                 quote! {
                     {
-                        #ident(&mut cursor, source, &mut last_idx);
+                        #ident(cursor, source, last_idx);
                         #construct_name
                     }
                 }
@@ -234,15 +204,7 @@ fn gen_struct_or_variant(
     out.push(syn::parse_quote! {
         #[allow(non_snake_case)]
         fn #extract_ident(node: rust_sitter::tree_sitter::Node, source: &[u8]) -> #containing_type {
-            let mut last_idx = node.start_byte();
-            let mut parent_cursor = node.walk();
-            let mut cursor = if parent_cursor.goto_first_child() {
-                Some(parent_cursor)
-            } else {
-                None
-            };
-
-            #construct_expr
+            rust_sitter::extract_struct_or_variant(node, move |cursor, last_idx| #construct_expr)
         }
     });
 
