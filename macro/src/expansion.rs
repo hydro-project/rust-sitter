@@ -80,7 +80,7 @@ fn gen_field(path: String, ident_str: String, leaf: Field, out: &mut Vec<Item>) 
         fn #extract_ident(cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>, source: &[u8], last_idx: &mut usize) -> #leaf_type {
             #(#leaf_stmts)*
 
-            rust_sitter::extract_field(cursor_opt, last_idx, #ident_str, move |node, last_idx| #leaf_expr)
+            rust_sitter::__private::extract_field(cursor_opt, last_idx, #ident_str, move |node, last_idx| #leaf_expr)
         }
     });
 }
@@ -204,7 +204,7 @@ fn gen_struct_or_variant(
     out.push(syn::parse_quote! {
         #[allow(non_snake_case)]
         fn #extract_ident(node: rust_sitter::tree_sitter::Node, source: &[u8]) -> #containing_type {
-            rust_sitter::extract_struct_or_variant(node, move |cursor, last_idx| #construct_expr)
+            rust_sitter::__private::extract_struct_or_variant(node, move |cursor, last_idx| #construct_expr)
         }
     });
 
