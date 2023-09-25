@@ -53,6 +53,6 @@ pub fn extract_field<T>(
             }
         }
     } else {
-        return leaf_expr(None, last_idx);
+        leaf_expr(None, last_idx)
     }
 }
