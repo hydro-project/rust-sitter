@@ -1,3 +1,4 @@
+use serde_json::Value;
 use syn::{parse_quote, Item};
 
 mod expansion;
@@ -5,7 +6,7 @@ use expansion::*;
 
 /// Generates JSON strings defining Tree Sitter grammars for every Rust Sitter
 /// grammar found in the given module and recursive submodules.
-pub fn generate_grammars(root_file: &Path) -> Vec<String> {
+pub fn generate_grammars(root_file: &Path) -> Vec<Value> {
     let root_file = syn_inline_mod::parse_and_inline_modules(root_file).items;
     let mut out = vec![];
     root_file
@@ -14,7 +15,7 @@ pub fn generate_grammars(root_file: &Path) -> Vec<String> {
     out
 }
 
-fn generate_all_grammars(item: &Item, out: &mut Vec<String>) {
+fn generate_all_grammars(item: &Item, out: &mut Vec<Value>) {
     if let Item::Mod(m) = item {
         m.content
             .iter()
@@ -24,7 +25,7 @@ fn generate_all_grammars(item: &Item, out: &mut Vec<String>) {
             .iter()
             .any(|a| a.path == parse_quote!(rust_sitter::grammar))
         {
-            out.push(generate_grammar(m).to_string())
+            out.push(generate_grammar(m))
         }
     }
 }
@@ -42,20 +43,45 @@ use tree_sitter_cli::generate;
 /// submodules.
 pub fn build_parsers(root_file: &Path) {
     use std::env;
-
+    let out_dir = env::var("OUT_DIR").unwrap();
+    let emit_artifacts: bool = env::var("RUST_SITTER_EMIT_ARTIFACTS")
+        .map(|s| s.parse().unwrap_or(false))
+        .unwrap_or(false);
     generate_grammars(root_file).iter().for_each(|grammar| {
-        let dir = tempfile::Builder::new()
+        let (grammar_name, grammar_c) =
+            generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        let tempfile = tempfile::Builder::new()
             .prefix("grammar")
             .tempdir()
             .unwrap();
-        let grammar_file = dir.path().join("parser.c");
+
+        let dir = if emit_artifacts {
+            let grammar_dir = Path::new(out_dir.as_str()).join(format!("grammar_{grammar_name}",));
+            std::fs::remove_dir_all(&grammar_dir).expect("Couldn't clear old artifacts");
+            std::fs::DirBuilder::new()
+                .recursive(true)
+                .create(grammar_dir.clone())
+                .expect("Couldn't create grammar JSON directory");
+            grammar_dir
+        } else {
+            tempfile.path().into()
+        };
+
+        let grammar_file = dir.join("parser.c");
         let mut f = std::fs::File::create(grammar_file).unwrap();
 
-        let (grammar_name, grammar_c) = generate::generate_parser_for_grammar(grammar).unwrap();
         f.write_all(grammar_c.as_bytes()).unwrap();
         drop(f);
 
-        let header_dir = dir.path().join("tree_sitter");
+        // emit grammar into the build out_dir
+        let mut grammar_json_file =
+            std::fs::File::create(dir.join(format!("{grammar_name}.json"))).unwrap();
+        grammar_json_file
+            .write_all(serde_json::to_string_pretty(grammar).unwrap().as_bytes())
+            .unwrap();
+        drop(grammar_json_file);
+
+        let header_dir = dir.join("tree_sitter");
         std::fs::create_dir(&header_dir).unwrap();
         let mut parser_file = std::fs::File::create(header_dir.join("parser.h")).unwrap();
         parser_file
@@ -63,7 +89,7 @@ pub fn build_parsers(root_file: &Path) {
             .unwrap();
         drop(parser_file);
 
-        let sysroot_dir = dir.path().join("sysroot");
+        let sysroot_dir = dir.join("sysroot");
         if env::var("TARGET").unwrap().starts_with("wasm32") {
             std::fs::create_dir(&sysroot_dir).unwrap();
             let mut stdint = std::fs::File::create(sysroot_dir.join("stdint.h")).unwrap();
@@ -91,12 +117,17 @@ pub fn build_parsers(root_file: &Path) {
             drop(stdbool);
         }
 
-        cc::Build::new()
-            .include(&dir)
-            .include(&sysroot_dir)
-            .flag_if_supported("-Wno-everything")
-            .file(dir.path().join("parser.c"))
-            .compile(&grammar_name);
+        let mut c_config = cc::Build::new();
+        c_config.include(&dir).include(&sysroot_dir);
+        c_config
+            .flag_if_supported("-Wno-unused-label")
+            .flag_if_supported("-Wno-unused-parameter")
+            .flag_if_supported("-Wno-unused-but-set-variable")
+            .flag_if_supported("-Wno-trigraphs")
+            .flag_if_supported("-Wno-everything");
+        c_config.file(dir.join("parser.c"));
+
+        c_config.compile(&grammar_name);
     });
 }
 
