@@ -1,6 +1,7 @@
 use quote::ToTokens;
 use syn::{parse_macro_input, AttributeArgs, ItemMod};
 
+mod errors;
 mod expansion;
 use expansion::*;
 
@@ -213,11 +214,13 @@ pub fn grammar(
 ) -> proc_macro::TokenStream {
     let attrs: AttributeArgs = parse_macro_input!(attr);
     let module: ItemMod = parse_macro_input!(input);
-    let expanded: ItemMod = expand_grammar(syn::parse_quote! {
+    let expanded = expand_grammar(syn::parse_quote! {
         #[rust_sitter::grammar[#(#attrs),*]]
         #module
-    });
-    proc_macro::TokenStream::from(expanded.to_token_stream())
+    })
+    .map(ToTokens::into_token_stream)
+    .unwrap_or_else(syn::Error::into_compile_error);
+    proc_macro::TokenStream::from(expanded)
 }
 
 #[cfg(test)]
@@ -227,7 +230,7 @@ mod tests {
     use std::process::Command;
 
     use quote::ToTokens;
-    use syn::parse_quote;
+    use syn::{parse_quote, Result};
     use tempfile::tempdir;
 
     use super::expand_grammar;
@@ -256,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn enum_transformed_fields() {
+    fn enum_transformed_fields() -> Result<()> {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
@@ -269,14 +272,16 @@ mod tests {
                         ),
                     }
                 }
-            })
+            })?
             .to_token_stream()
             .to_string()
         ));
+
+        Ok(())
     }
 
     #[test]
-    fn enum_recursive() {
+    fn enum_recursive() -> Result<()> {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
@@ -294,14 +299,16 @@ mod tests {
                         ),
                     }
                 }
-            })
+            })?
             .to_token_stream()
             .to_string()
         ));
+
+        Ok(())
     }
 
     #[test]
-    fn enum_prec_left() {
+    fn enum_prec_left() -> Result<()> {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
@@ -321,14 +328,16 @@ mod tests {
                         ),
                     }
                 }
-            })
+            })?
             .to_token_stream()
             .to_string()
         ));
+
+        Ok(())
     }
 
     #[test]
-    fn struct_extra() {
+    fn struct_extra() -> Result<()> {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
@@ -346,14 +355,16 @@ mod tests {
                         _whitespace: (),
                     }
                 }
-            })
+            })?
             .to_token_stream()
             .to_string()
         ));
+
+        Ok(())
     }
 
     #[test]
-    fn grammar_unboxed_field() {
+    fn grammar_unboxed_field() -> Result<()> {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
@@ -370,14 +381,16 @@ mod tests {
                         ),
                     }
                 }
-            })
+            })?
             .to_token_stream()
             .to_string()
         ));
+
+        Ok(())
     }
 
     #[test]
-    fn struct_repeat() {
+    fn struct_repeat() -> Result<()> {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
@@ -398,14 +411,16 @@ mod tests {
                         _whitespace: (),
                     }
                 }
-            })
+            })?
             .to_token_stream()
             .to_string()
         ));
+
+        Ok(())
     }
 
     #[test]
-    fn struct_optional() {
+    fn struct_optional() -> Result<()> {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
@@ -422,14 +437,16 @@ mod tests {
                         v: i32
                     }
                 }
-            })
+            })?
             .to_token_stream()
             .to_string()
         ));
+
+        Ok(())
     }
 
     #[test]
-    fn enum_with_unamed_vector() {
+    fn enum_with_unamed_vector() -> Result<()> {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
@@ -447,14 +464,16 @@ mod tests {
                         )
                     }
                 }
-            })
+            })?
             .to_token_stream()
             .to_string()
         ));
+
+        Ok(())
     }
 
     #[test]
-    fn enum_with_named_field() {
+    fn enum_with_named_field() -> Result<()> {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
@@ -472,14 +491,16 @@ mod tests {
                         }
                     }
                 }
-            })
+            })?
             .to_token_stream()
             .to_string()
         ));
+
+        Ok(())
     }
 
     #[test]
-    fn spanned_in_vec() {
+    fn spanned_in_vec() -> Result<()> {
         insta::assert_display_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
@@ -502,9 +523,11 @@ mod tests {
                         _whitespace: (),
                     }
                 }
-            })
+            })?
             .to_token_stream()
             .to_string()
         ));
+
+        Ok(())
     }
 }
