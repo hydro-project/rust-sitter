@@ -1,144 +1,82 @@
 ---
 source: macro/src/lib.rs
-expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod grammar\n                            {\n                                #[rust_sitter :: language] pub struct Language\n                                {\n                                    #[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] v : Option < i32 >, t : Option < Number\n                                    >,\n                                } pub struct Number\n                                {\n                                    #[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] v : i32\n                                }\n                            }\n                        }).to_token_stream().to_string())"
+expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                                #[rust_sitter :: grammar(\"test\")] mod grammar\n                                {\n                                    #[rust_sitter :: language] pub struct Language\n                                    {\n                                        #[rust_sitter ::\n                                        leaf(pattern = r\"\\d+\", transform = | v |\n                                        v.parse().unwrap())] v : Option < i32 >, t : Option < Number\n                                        >,\n                                    } pub struct Number\n                                    {\n                                        #[rust_sitter ::\n                                        leaf(pattern = r\"\\d+\", transform = | v |\n                                        v.parse().unwrap())] v : i32\n                                    }\n                                }\n                            })?.to_token_stream().to_string())"
 ---
 mod grammar {
     pub struct Language {
         v: Option<i32>,
         t: Option<Number>,
     }
-    impl rust_sitter::Extract<Language> for Language {
+    impl ::rust_sitter::Extract<Language> for Language {
         type LeafFn = ();
         #[allow(non_snake_case)]
         fn extract(
-            node: Option<rust_sitter::tree_sitter::Node>,
+            node: Option<::rust_sitter::tree_sitter::Node>,
             source: &[u8],
             last_idx: usize,
             _leaf_fn: Option<&Self::LeafFn>,
         ) -> Self {
             let node = node.unwrap();
-            #[allow(non_snake_case)]
-            #[allow(clippy::unused_unit)]
-            fn extract_Language_v(
-                cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>,
-                source: &[u8],
-                last_idx: &mut usize,
-            ) -> Option<i32> {
-                rust_sitter::__private::extract_field(
-                    cursor_opt,
-                    last_idx,
-                    "v",
-                    move |node, last_idx| {
-                        <Option<rust_sitter::WithLeaf<i32>> as rust_sitter::Extract<_>>::extract(
-                            node,
-                            source,
-                            *last_idx,
-                            Some(&|v| v.parse().unwrap()),
+            ::rust_sitter::__private::extract_struct_or_variant(node, move |cursor, last_idx| {
+                Language {
+                    v: {
+                        ::rust_sitter::__private::extract_field::<
+                            Option<rust_sitter::WithLeaf<i32>>,
+                            _,
+                        >(
+                            cursor, source, last_idx, "v", Some(&|v| v.parse().unwrap())
                         )
                     },
-                )
-            }
-            #[allow(non_snake_case)]
-            #[allow(clippy::unused_unit)]
-            fn extract_Language_t(
-                cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>,
-                source: &[u8],
-                last_idx: &mut usize,
-            ) -> Option<Number> {
-                rust_sitter::__private::extract_field(
-                    cursor_opt,
-                    last_idx,
-                    "t",
-                    move |node, last_idx| {
-                        <Option<Number> as rust_sitter::Extract<_>>::extract(
-                            node, source, *last_idx, None,
+                    t: {
+                        ::rust_sitter::__private::extract_field::<Option<Number>, _>(
+                            cursor, source, last_idx, "t", None,
                         )
                     },
-                )
-            }
-            #[allow(non_snake_case)]
-            fn extract_Language(node: rust_sitter::tree_sitter::Node, source: &[u8]) -> Language {
-                rust_sitter::__private::extract_struct_or_variant(node, move |cursor, last_idx| {
-                    Language {
-                        v: extract_Language_v(cursor, source, last_idx),
-                        t: extract_Language_t(cursor, source, last_idx),
-                    }
-                })
-            }
-            extract_Language(node, source)
+                }
+            })
         }
     }
     pub struct Number {
         v: i32,
     }
-    impl rust_sitter::Extract<Number> for Number {
+    impl ::rust_sitter::Extract<Number> for Number {
         type LeafFn = ();
         #[allow(non_snake_case)]
         fn extract(
-            node: Option<rust_sitter::tree_sitter::Node>,
+            node: Option<::rust_sitter::tree_sitter::Node>,
             source: &[u8],
             last_idx: usize,
             _leaf_fn: Option<&Self::LeafFn>,
         ) -> Self {
             let node = node.unwrap();
-            #[allow(non_snake_case)]
-            #[allow(clippy::unused_unit)]
-            fn extract_Number_v(
-                cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>,
-                source: &[u8],
-                last_idx: &mut usize,
-            ) -> i32 {
-                rust_sitter::__private::extract_field(
-                    cursor_opt,
-                    last_idx,
-                    "v",
-                    move |node, last_idx| {
-                        <rust_sitter::WithLeaf<i32> as rust_sitter::Extract<_>>::extract(
-                            node,
+            ::rust_sitter::__private::extract_struct_or_variant(node, move |cursor, last_idx| {
+                Number {
+                    v: {
+                        ::rust_sitter::__private::extract_field::<rust_sitter::WithLeaf<i32>, _>(
+                            cursor,
                             source,
-                            *last_idx,
+                            last_idx,
+                            "v",
                             Some(&|v| v.parse().unwrap()),
                         )
                     },
-                )
-            }
-            #[allow(non_snake_case)]
-            fn extract_Number(node: rust_sitter::tree_sitter::Node, source: &[u8]) -> Number {
-                rust_sitter::__private::extract_struct_or_variant(node, move |cursor, last_idx| {
-                    Number {
-                        v: extract_Number_v(cursor, source, last_idx),
-                    }
-                })
-            }
-            extract_Number(node, source)
+                }
+            })
         }
     }
     extern "C" {
-        fn tree_sitter_test() -> rust_sitter::tree_sitter::Language;
+        fn tree_sitter_test() -> ::rust_sitter::tree_sitter::Language;
     }
-    pub fn language() -> rust_sitter::tree_sitter::Language {
+    pub fn language() -> ::rust_sitter::tree_sitter::Language {
         unsafe { tree_sitter_test() }
     }
+    #[doc = r" Parse an input string according to the grammar. Returns either any parsing errors that happened, or a"]
+    #[doc = "[`Language`]"]
+    #[doc = r" instance containing the parsed structured data."]
     pub fn parse(
         input: &str,
-    ) -> core::result::Result<Language, Vec<rust_sitter::errors::ParseError>> {
-        let mut parser = rust_sitter::tree_sitter::Parser::new();
-        parser.set_language(language()).unwrap();
-        let tree = parser.parse(input, None).unwrap();
-        let root_node = tree.root_node();
-        if root_node.has_error() {
-            let mut errors = vec![];
-            rust_sitter::errors::collect_parsing_errors(&root_node, input.as_bytes(), &mut errors);
-            Err(errors)
-        } else {
-            use rust_sitter::Extract;
-            Ok(<Language as rust_sitter::Extract<_>>::extract(
-                Some(root_node),
-                input.as_bytes(),
-                0,
-                None,
-            ))
-        }
+    ) -> core::result::Result<Language, Vec<::rust_sitter::errors::ParseError>> {
+        ::rust_sitter::__private::parse::<Language>(input, language)
     }
 }
 

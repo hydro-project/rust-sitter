@@ -1,99 +1,62 @@
 ---
 source: macro/src/lib.rs
-expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod grammar\n                            {\n                                #[rust_sitter :: language] pub enum Expr\n                                {\n                                    Number(#[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] u32), Neg\n                                    {\n                                        #[rust_sitter :: leaf(text = \"!\")] _bang : (), value : Box <\n                                        Expr >,\n                                    }\n                                }\n                            }\n                        }).to_token_stream().to_string())"
+expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                                #[rust_sitter :: grammar(\"test\")] mod grammar\n                                {\n                                    #[rust_sitter :: language] pub enum Expr\n                                    {\n                                        Number(#[rust_sitter ::\n                                        leaf(pattern = r\"\\d+\", transform = | v |\n                                        v.parse().unwrap())] u32), Neg\n                                        {\n                                            #[rust_sitter :: leaf(text = \"!\")] _bang : (), value : Box <\n                                            Expr >,\n                                        }\n                                    }\n                                }\n                            })?.to_token_stream().to_string())"
 ---
 mod grammar {
     pub enum Expr {
         Number(u32),
         Neg { _bang: (), value: Box<Expr> },
     }
-    impl rust_sitter::Extract<Expr> for Expr {
+    impl ::rust_sitter::Extract<Expr> for Expr {
         type LeafFn = ();
         #[allow(non_snake_case)]
         fn extract(
-            node: Option<rust_sitter::tree_sitter::Node>,
+            node: Option<::rust_sitter::tree_sitter::Node>,
             source: &[u8],
             _last_idx: usize,
             _leaf_fn: Option<&Self::LeafFn>,
         ) -> Self {
             let node = node.unwrap();
-            #[allow(non_snake_case)]
-            #[allow(clippy::unused_unit)]
-            fn extract_Expr_Number_0(
-                cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>,
-                source: &[u8],
-                last_idx: &mut usize,
-            ) -> u32 {
-                rust_sitter::__private::extract_field(
-                    cursor_opt,
-                    last_idx,
-                    "0",
-                    move |node, last_idx| {
-                        <rust_sitter::WithLeaf<u32> as rust_sitter::Extract<_>>::extract(
-                            node,
-                            source,
-                            *last_idx,
-                            Some(&|v| v.parse().unwrap()),
-                        )
-                    },
-                )
-            }
-            #[allow(non_snake_case)]
-            fn extract_Expr_Number(node: rust_sitter::tree_sitter::Node, source: &[u8]) -> Expr {
-                rust_sitter::__private::extract_struct_or_variant(node, move |cursor, last_idx| {
-                    Expr::Number(extract_Expr_Number_0(cursor, source, last_idx))
-                })
-            }
-            #[allow(non_snake_case)]
-            #[allow(clippy::unused_unit)]
-            fn extract_Expr_Neg__bang(
-                cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>,
-                source: &[u8],
-                last_idx: &mut usize,
-            ) -> () {
-                rust_sitter::__private::extract_field(
-                    cursor_opt,
-                    last_idx,
-                    "_bang",
-                    move |node, last_idx| {
-                        <() as rust_sitter::Extract<_>>::extract(node, source, *last_idx, None)
-                    },
-                )
-            }
-            #[allow(non_snake_case)]
-            #[allow(clippy::unused_unit)]
-            fn extract_Expr_Neg_value(
-                cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>,
-                source: &[u8],
-                last_idx: &mut usize,
-            ) -> Box<Expr> {
-                rust_sitter::__private::extract_field(
-                    cursor_opt,
-                    last_idx,
-                    "value",
-                    move |node, last_idx| {
-                        <Box<Expr> as rust_sitter::Extract<_>>::extract(
-                            node, source, *last_idx, None,
-                        )
-                    },
-                )
-            }
-            #[allow(non_snake_case)]
-            fn extract_Expr_Neg(node: rust_sitter::tree_sitter::Node, source: &[u8]) -> Expr {
-                rust_sitter::__private::extract_struct_or_variant(node, move |cursor, last_idx| {
-                    Expr::Neg {
-                        _bang: extract_Expr_Neg__bang(cursor, source, last_idx),
-                        value: extract_Expr_Neg_value(cursor, source, last_idx),
-                    }
-                })
-            }
             let mut cursor = node.walk();
-            assert!(cursor.goto_first_child());
+            assert!(
+                cursor.goto_first_child(),
+                "Could not find a child corresponding to any enum branch"
+            );
             loop {
-                let n = cursor.node();
-                match n.kind() {
-                    "Expr_Number" => return extract_Expr_Number(n, source),
-                    "Expr_Neg" => return extract_Expr_Neg(n, source),
+                let node = cursor.node();
+                match node.kind() {
+                    "Expr_Number" => {
+                        return ::rust_sitter::__private::extract_struct_or_variant(
+                            node,
+                            move |cursor, last_idx| {
+                                Expr::Number({
+                                    ::rust_sitter::__private::extract_field::<
+                                        rust_sitter::WithLeaf<u32>,
+                                        _,
+                                    >(
+                                        cursor, source, last_idx, "0", Some(&|v| v.parse().unwrap())
+                                    )
+                                })
+                            },
+                        )
+                    }
+                    "Expr_Neg" => {
+                        return ::rust_sitter::__private::extract_struct_or_variant(
+                            node,
+                            move |cursor, last_idx| Expr::Neg {
+                                _bang: {
+                                    ::rust_sitter::__private::extract_field::<(), _>(
+                                        cursor, source, last_idx, "_bang", None,
+                                    )
+                                },
+                                value: {
+                                    ::rust_sitter::__private::extract_field::<Box<Expr>, _>(
+                                        cursor, source, last_idx, "value", None,
+                                    )
+                                },
+                            },
+                        )
+                    }
                     _ => {
                         if !cursor.goto_next_sibling() {
                             panic!("Could not find a child corresponding to any enum branch")
@@ -104,29 +67,18 @@ mod grammar {
         }
     }
     extern "C" {
-        fn tree_sitter_test() -> rust_sitter::tree_sitter::Language;
+        fn tree_sitter_test() -> ::rust_sitter::tree_sitter::Language;
     }
-    pub fn language() -> rust_sitter::tree_sitter::Language {
+    pub fn language() -> ::rust_sitter::tree_sitter::Language {
         unsafe { tree_sitter_test() }
     }
-    pub fn parse(input: &str) -> core::result::Result<Expr, Vec<rust_sitter::errors::ParseError>> {
-        let mut parser = rust_sitter::tree_sitter::Parser::new();
-        parser.set_language(language()).unwrap();
-        let tree = parser.parse(input, None).unwrap();
-        let root_node = tree.root_node();
-        if root_node.has_error() {
-            let mut errors = vec![];
-            rust_sitter::errors::collect_parsing_errors(&root_node, input.as_bytes(), &mut errors);
-            Err(errors)
-        } else {
-            use rust_sitter::Extract;
-            Ok(<Expr as rust_sitter::Extract<_>>::extract(
-                Some(root_node),
-                input.as_bytes(),
-                0,
-                None,
-            ))
-        }
+    #[doc = r" Parse an input string according to the grammar. Returns either any parsing errors that happened, or a"]
+    #[doc = "[`Expr`]"]
+    #[doc = r" instance containing the parsed structured data."]
+    pub fn parse(
+        input: &str,
+    ) -> core::result::Result<Expr, Vec<::rust_sitter::errors::ParseError>> {
+        ::rust_sitter::__private::parse::<Expr>(input, language)
     }
 }
 

@@ -4,7 +4,7 @@
 //! They need to be public so they can be accessed at all (\*cough\* macro hygiene), but
 //! they are not intended to actually be called in any other circumstance.
 
-use crate::tree_sitter;
+use crate::{tree_sitter, Extract};
 
 pub fn extract_struct_or_variant<T>(
     node: tree_sitter::Node,
@@ -21,18 +21,19 @@ pub fn extract_struct_or_variant<T>(
     )
 }
 
-pub fn extract_field<T>(
+pub fn extract_field<LT: Extract<T>, T>(
     cursor_opt: &mut Option<tree_sitter::TreeCursor>,
+    source: &[u8],
     last_idx: &mut usize,
     field_name: &str,
-    leaf_expr: impl Fn(Option<tree_sitter::Node>, &mut usize) -> T,
+    closure_ref: Option<&LT::LeafFn>,
 ) -> T {
     if let Some(cursor) = cursor_opt.as_mut() {
         loop {
             let n = cursor.node();
             if let Some(name) = cursor.field_name() {
                 if name == field_name {
-                    let out = leaf_expr(Some(n), last_idx);
+                    let out = LT::extract(Some(n), source, *last_idx, closure_ref);
 
                     if !cursor.goto_next_sibling() {
                         *cursor_opt = None;
@@ -42,17 +43,41 @@ pub fn extract_field<T>(
 
                     return out;
                 } else {
-                    return leaf_expr(None, last_idx);
+                    return LT::extract(None, source, *last_idx, closure_ref);
                 }
             } else {
                 *last_idx = n.end_byte();
             }
 
             if !cursor.goto_next_sibling() {
-                return leaf_expr(None, last_idx);
+                return LT::extract(None, source, *last_idx, closure_ref);
             }
         }
     } else {
-        leaf_expr(None, last_idx)
+        LT::extract(None, source, *last_idx, closure_ref)
+    }
+}
+
+pub fn parse<T: Extract<T>>(
+    input: &str,
+    language: impl Fn() -> tree_sitter::Language,
+) -> core::result::Result<T, Vec<crate::errors::ParseError>> {
+    let mut parser = crate::tree_sitter::Parser::new();
+    parser.set_language(language()).unwrap();
+    let tree = parser.parse(input, None).unwrap();
+    let root_node = tree.root_node();
+
+    if root_node.has_error() {
+        let mut errors = vec![];
+        crate::errors::collect_parsing_errors(&root_node, input.as_bytes(), &mut errors);
+
+        Err(errors)
+    } else {
+        Ok(<T as crate::Extract<_>>::extract(
+            Some(root_node),
+            input.as_bytes(),
+            0,
+            None,
+        ))
     }
 }
