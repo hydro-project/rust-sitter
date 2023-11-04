@@ -1,3 +1,5 @@
+pub mod __private;
+
 use std::ops::Deref;
 
 pub use rust_sitter_macro::*;

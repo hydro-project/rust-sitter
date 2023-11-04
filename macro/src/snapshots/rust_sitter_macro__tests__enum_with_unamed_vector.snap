@@ -1,152 +1,69 @@
 ---
 source: macro/src/lib.rs
-expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                            #[rust_sitter :: grammar(\"test\")] mod grammar\n                            {\n                                pub struct Number\n                                {\n                                    #[rust_sitter ::\n                                    leaf(pattern = r\"\\d+\", transform = | v |\n                                    v.parse().unwrap())] value : u32\n                                } #[rust_sitter :: language] pub enum Expr\n                                {\n                                    Numbers(#[rust_sitter :: repeat(non_empty = true)] Vec <\n                                    Number >)\n                                }\n                            }\n                        }).to_token_stream().to_string())"
+expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                                #[rust_sitter :: grammar(\"test\")] mod grammar\n                                {\n                                    pub struct Number\n                                    {\n                                        #[rust_sitter ::\n                                        leaf(pattern = r\"\\d+\", transform = | v |\n                                        v.parse().unwrap())] value : u32\n                                    } #[rust_sitter :: language] pub enum Expr\n                                    {\n                                        Numbers(#[rust_sitter :: repeat(non_empty = true)] Vec <\n                                        Number >)\n                                    }\n                                }\n                            })?.to_token_stream().to_string())"
 ---
 mod grammar {
     pub struct Number {
         value: u32,
     }
-    impl rust_sitter::Extract<Number> for Number {
+    impl ::rust_sitter::Extract<Number> for Number {
         type LeafFn = ();
         #[allow(non_snake_case)]
         fn extract(
-            node: Option<rust_sitter::tree_sitter::Node>,
+            node: Option<::rust_sitter::tree_sitter::Node>,
             source: &[u8],
             last_idx: usize,
             _leaf_fn: Option<&Self::LeafFn>,
         ) -> Self {
             let node = node.unwrap();
-            #[allow(non_snake_case)]
-            #[allow(clippy::unused_unit)]
-            fn extract_Number_value(
-                cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>,
-                source: &[u8],
-                last_idx: &mut usize,
-            ) -> u32 {
-                if let Some(cursor) = cursor_opt.as_mut() {
-                    loop {
-                        let n = cursor.node();
-                        if let Some(name) = cursor.field_name() {
-                            if name == "value" {
-                                let node: Option<rust_sitter::tree_sitter::Node> = Some(n);
-                                let out = < rust_sitter :: WithLeaf < u32 > as rust_sitter :: Extract < _ > > :: extract (node , source , * last_idx , Some (& | v | v . parse () . unwrap ())) ;
-                                if !cursor.goto_next_sibling() {
-                                    *cursor_opt = None;
-                                };
-                                *last_idx = n.end_byte();
-                                return out;
-                            } else {
-                                let node: Option<rust_sitter::tree_sitter::Node> = None;
-                                return < rust_sitter :: WithLeaf < u32 > as rust_sitter :: Extract < _ > > :: extract (node , source , * last_idx , Some (& | v | v . parse () . unwrap ())) ;
-                            }
-                        } else {
-                            *last_idx = n.end_byte();
-                        }
-                        if !cursor.goto_next_sibling() {
-                            let node: Option<rust_sitter::tree_sitter::Node> = None;
-                            return < rust_sitter :: WithLeaf < u32 > as rust_sitter :: Extract < _ > > :: extract (node , source , * last_idx , Some (& | v | v . parse () . unwrap ())) ;
-                        }
-                    }
-                } else {
-                    let node: Option<rust_sitter::tree_sitter::Node> = None;
-                    return <rust_sitter::WithLeaf<u32> as rust_sitter::Extract<_>>::extract(
-                        node,
-                        source,
-                        *last_idx,
-                        Some(&|v| v.parse().unwrap()),
-                    );
-                }
-            }
-            #[allow(non_snake_case)]
-            fn extract_Number(node: rust_sitter::tree_sitter::Node, source: &[u8]) -> Number {
-                let mut last_idx = node.start_byte();
-                let mut parent_cursor = node.walk();
-                let mut cursor = if parent_cursor.goto_first_child() {
-                    Some(parent_cursor)
-                } else {
-                    None
-                };
+            ::rust_sitter::__private::extract_struct_or_variant(node, move |cursor, last_idx| {
                 Number {
-                    value: extract_Number_value(&mut cursor, source, &mut last_idx),
+                    value: {
+                        ::rust_sitter::__private::extract_field::<rust_sitter::WithLeaf<u32>, _>(
+                            cursor,
+                            source,
+                            last_idx,
+                            "value",
+                            Some(&|v| v.parse().unwrap()),
+                        )
+                    },
                 }
-            }
-            extract_Number(node, source)
+            })
         }
     }
     pub enum Expr {
         Numbers(Vec<Number>),
     }
-    impl rust_sitter::Extract<Expr> for Expr {
+    impl ::rust_sitter::Extract<Expr> for Expr {
         type LeafFn = ();
         #[allow(non_snake_case)]
         fn extract(
-            node: Option<rust_sitter::tree_sitter::Node>,
+            node: Option<::rust_sitter::tree_sitter::Node>,
             source: &[u8],
             _last_idx: usize,
             _leaf_fn: Option<&Self::LeafFn>,
         ) -> Self {
             let node = node.unwrap();
-            #[allow(non_snake_case)]
-            #[allow(clippy::unused_unit)]
-            fn extract_Expr_Numbers_0(
-                cursor_opt: &mut Option<rust_sitter::tree_sitter::TreeCursor>,
-                source: &[u8],
-                last_idx: &mut usize,
-            ) -> Vec<Number> {
-                if let Some(cursor) = cursor_opt.as_mut() {
-                    loop {
-                        let n = cursor.node();
-                        if let Some(name) = cursor.field_name() {
-                            if name == "0" {
-                                let node: Option<rust_sitter::tree_sitter::Node> = Some(n);
-                                let out = <Vec<Number> as rust_sitter::Extract<_>>::extract(
-                                    node, source, *last_idx, None,
-                                );
-                                if !cursor.goto_next_sibling() {
-                                    *cursor_opt = None;
-                                };
-                                *last_idx = n.end_byte();
-                                return out;
-                            } else {
-                                let node: Option<rust_sitter::tree_sitter::Node> = None;
-                                return <Vec<Number> as rust_sitter::Extract<_>>::extract(
-                                    node, source, *last_idx, None,
-                                );
-                            }
-                        } else {
-                            *last_idx = n.end_byte();
-                        }
-                        if !cursor.goto_next_sibling() {
-                            let node: Option<rust_sitter::tree_sitter::Node> = None;
-                            return <Vec<Number> as rust_sitter::Extract<_>>::extract(
-                                node, source, *last_idx, None,
-                            );
-                        }
-                    }
-                } else {
-                    let node: Option<rust_sitter::tree_sitter::Node> = None;
-                    return <Vec<Number> as rust_sitter::Extract<_>>::extract(
-                        node, source, *last_idx, None,
-                    );
-                }
-            }
-            #[allow(non_snake_case)]
-            fn extract_Expr_Numbers(node: rust_sitter::tree_sitter::Node, source: &[u8]) -> Expr {
-                let mut last_idx = node.start_byte();
-                let mut parent_cursor = node.walk();
-                let mut cursor = if parent_cursor.goto_first_child() {
-                    Some(parent_cursor)
-                } else {
-                    None
-                };
-                Expr::Numbers(extract_Expr_Numbers_0(&mut cursor, source, &mut last_idx))
-            }
             let mut cursor = node.walk();
-            assert!(cursor.goto_first_child());
+            assert!(
+                cursor.goto_first_child(),
+                "Could not find a child corresponding to any enum branch"
+            );
             loop {
-                let n = cursor.node();
-                match n.kind() {
-                    "Expr_Numbers" => return extract_Expr_Numbers(n, source),
+                let node = cursor.node();
+                match node.kind() {
+                    "Expr_Numbers" => {
+                        return ::rust_sitter::__private::extract_struct_or_variant(
+                            node,
+                            move |cursor, last_idx| {
+                                Expr::Numbers({
+                                    ::rust_sitter::__private::extract_field::<Vec<Number>, _>(
+                                        cursor, source, last_idx, "0", None,
+                                    )
+                                })
+                            },
+                        )
+                    }
                     _ => {
                         if !cursor.goto_next_sibling() {
                             panic!("Could not find a child corresponding to any enum branch")
@@ -157,29 +74,18 @@ mod grammar {
         }
     }
     extern "C" {
-        fn tree_sitter_test() -> rust_sitter::tree_sitter::Language;
+        fn tree_sitter_test() -> ::rust_sitter::tree_sitter::Language;
     }
-    pub fn language() -> rust_sitter::tree_sitter::Language {
+    pub fn language() -> ::rust_sitter::tree_sitter::Language {
         unsafe { tree_sitter_test() }
     }
-    pub fn parse(input: &str) -> core::result::Result<Expr, Vec<rust_sitter::errors::ParseError>> {
-        let mut parser = rust_sitter::tree_sitter::Parser::new();
-        parser.set_language(language()).unwrap();
-        let tree = parser.parse(input, None).unwrap();
-        let root_node = tree.root_node();
-        if root_node.has_error() {
-            let mut errors = vec![];
-            rust_sitter::errors::collect_parsing_errors(&root_node, input.as_bytes(), &mut errors);
-            Err(errors)
-        } else {
-            use rust_sitter::Extract;
-            Ok(<Expr as rust_sitter::Extract<_>>::extract(
-                Some(root_node),
-                input.as_bytes(),
-                0,
-                None,
-            ))
-        }
+    #[doc = r" Parse an input string according to the grammar. Returns either any parsing errors that happened, or a"]
+    #[doc = "[`Expr`]"]
+    #[doc = r" instance containing the parsed structured data."]
+    pub fn parse(
+        input: &str,
+    ) -> core::result::Result<Expr, Vec<::rust_sitter::errors::ParseError>> {
+        ::rust_sitter::__private::parse::<Expr>(input, language)
     }
 }
 
