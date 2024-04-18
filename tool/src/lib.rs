@@ -162,7 +162,7 @@ mod tests {
         };
 
         let grammar = generate_grammar(&m);
-        insta::assert_display_snapshot!(grammar);
+        insta::assert_snapshot!(grammar);
         tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
@@ -186,7 +186,7 @@ mod tests {
         };
 
         let grammar = generate_grammar(&m);
-        insta::assert_display_snapshot!(grammar);
+        insta::assert_snapshot!(grammar);
         tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
@@ -215,7 +215,7 @@ mod tests {
         };
 
         let grammar = generate_grammar(&m);
-        insta::assert_display_snapshot!(grammar);
+        insta::assert_snapshot!(grammar);
         tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
@@ -246,7 +246,7 @@ mod tests {
         };
 
         let grammar = generate_grammar(&m);
-        insta::assert_display_snapshot!(grammar);
+        insta::assert_snapshot!(grammar);
         tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
@@ -276,7 +276,7 @@ mod tests {
         };
 
         let grammar = generate_grammar(&m);
-        insta::assert_display_snapshot!(grammar);
+        insta::assert_snapshot!(grammar);
         tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
@@ -304,7 +304,7 @@ mod tests {
         };
 
         let grammar = generate_grammar(&m);
-        insta::assert_display_snapshot!(grammar);
+        insta::assert_snapshot!(grammar);
         tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
@@ -340,7 +340,7 @@ mod tests {
         };
 
         let grammar = generate_grammar(&m);
-        insta::assert_display_snapshot!(grammar);
+        insta::assert_snapshot!(grammar);
         tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
@@ -372,7 +372,7 @@ mod tests {
         };
 
         let grammar = generate_grammar(&m);
-        insta::assert_display_snapshot!(grammar);
+        insta::assert_snapshot!(grammar);
         tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
@@ -409,7 +409,7 @@ mod tests {
         };
 
         let grammar = generate_grammar(&m);
-        insta::assert_display_snapshot!(grammar);
+        insta::assert_snapshot!(grammar);
         tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
@@ -439,7 +439,7 @@ mod tests {
         };
 
         let grammar = generate_grammar(&m);
-        insta::assert_display_snapshot!(grammar);
+        insta::assert_snapshot!(grammar);
         tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
@@ -468,7 +468,7 @@ mod tests {
         };
 
         let grammar = generate_grammar(&m);
-        insta::assert_display_snapshot!(grammar);
+        insta::assert_snapshot!(grammar);
         tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
@@ -498,7 +498,7 @@ mod tests {
         };
 
         let grammar = generate_grammar(&m);
-        insta::assert_display_snapshot!(grammar);
+        insta::assert_snapshot!(grammar);
         tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 }

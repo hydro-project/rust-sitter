@@ -63,7 +63,7 @@ pub fn parse<T: Extract<T>>(
     language: impl Fn() -> tree_sitter::Language,
 ) -> core::result::Result<T, Vec<crate::errors::ParseError>> {
     let mut parser = crate::tree_sitter::Parser::new();
-    parser.set_language(language()).unwrap();
+    parser.set_language(&language()).unwrap();
     let tree = parser.parse(input, None).unwrap();
     let root_node = tree.root_node();
 

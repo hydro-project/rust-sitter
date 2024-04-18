@@ -22,8 +22,8 @@ serde_json = { version = "1", features = ["preserve_order"] }
 rust-sitter-common = { version = "0.4.1", path = "../common" }
 
 tempfile = { version = "3.0.0", optional = true }
-tree-sitter = { package = "tree-sitter", version = "0.20.9", optional = true }
-tree-sitter-cli = { package = "tree-sitter-cli", version = "0.20.7", optional = true }
+tree-sitter = { package = "tree-sitter", version = "0.22.5", optional = true }
+tree-sitter-cli = { package = "tree-sitter-cli", version = "0.22.5", optional = true }
 cc = { version = "1.0.73", optional = true }
 
 [dev-dependencies]
