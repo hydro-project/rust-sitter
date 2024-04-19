@@ -3,7 +3,7 @@ name = "rust-sitter-macro"
 description = "Procedural macros for Rust Sitter"
 readme = "../README.md"
 repository = "https://github.com/hydro-project/rust-sitter"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Shadaj Laddad <shadaj@users.noreply.github.com>"]
 edition = "2021"
 license = "MIT"
@@ -18,7 +18,7 @@ path = "src/lib.rs"
 syn = { version = "1.0", features = [ "full", "extra-traits" ] }
 quote = "1.0"
 proc-macro2 = "1.0.67"
-rust-sitter-common = { version= "0.4.1", path = "../common" }
+rust-sitter-common = { version= "0.4.2", path = "../common" }
 
 [dev-dependencies]
 insta = "1.7.1"
