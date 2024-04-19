@@ -260,7 +260,7 @@ mod tests {
 
     #[test]
     fn enum_transformed_fields() -> Result<()> {
-        insta::assert_display_snapshot!(rustfmt_code(
+        insta::assert_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
                 mod grammar {
@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn enum_recursive() -> Result<()> {
-        insta::assert_display_snapshot!(rustfmt_code(
+        insta::assert_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
                 mod grammar {
@@ -309,7 +309,7 @@ mod tests {
 
     #[test]
     fn enum_prec_left() -> Result<()> {
-        insta::assert_display_snapshot!(rustfmt_code(
+        insta::assert_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
                 mod grammar {
@@ -338,7 +338,7 @@ mod tests {
 
     #[test]
     fn struct_extra() -> Result<()> {
-        insta::assert_display_snapshot!(rustfmt_code(
+        insta::assert_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
                 mod grammar {
@@ -365,7 +365,7 @@ mod tests {
 
     #[test]
     fn grammar_unboxed_field() -> Result<()> {
-        insta::assert_display_snapshot!(rustfmt_code(
+        insta::assert_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
                 mod grammar {
@@ -391,7 +391,7 @@ mod tests {
 
     #[test]
     fn struct_repeat() -> Result<()> {
-        insta::assert_display_snapshot!(rustfmt_code(
+        insta::assert_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
                 mod grammar {
@@ -421,7 +421,7 @@ mod tests {
 
     #[test]
     fn struct_optional() -> Result<()> {
-        insta::assert_display_snapshot!(rustfmt_code(
+        insta::assert_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
                 mod grammar {
@@ -447,7 +447,7 @@ mod tests {
 
     #[test]
     fn enum_with_unamed_vector() -> Result<()> {
-        insta::assert_display_snapshot!(rustfmt_code(
+        insta::assert_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
                 mod grammar {
@@ -474,7 +474,7 @@ mod tests {
 
     #[test]
     fn enum_with_named_field() -> Result<()> {
-        insta::assert_display_snapshot!(rustfmt_code(
+        insta::assert_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
                 mod grammar {
@@ -501,7 +501,7 @@ mod tests {
 
     #[test]
     fn spanned_in_vec() -> Result<()> {
-        insta::assert_display_snapshot!(rustfmt_code(
+        insta::assert_snapshot!(rustfmt_code(
             &expand_grammar(parse_quote! {
                 #[rust_sitter::grammar("test")]
                 mod grammar {
