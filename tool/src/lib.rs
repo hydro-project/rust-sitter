@@ -48,8 +48,7 @@ pub fn build_parsers(root_file: &Path) {
         .map(|s| s.parse().unwrap_or(false))
         .unwrap_or(false);
     generate_grammars(root_file).iter().for_each(|grammar| {
-        let (grammar_name, grammar_c) =
-            generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        let (grammar_name, grammar_c) = generate_parser_for_grammar(&grammar.to_string()).unwrap();
         let tempfile = tempfile::Builder::new()
             .prefix("grammar")
             .tempdir()
