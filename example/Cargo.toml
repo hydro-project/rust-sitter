@@ -19,5 +19,5 @@ codemap-diagnostic = "0.1.1"
 rust-sitter-tool = { path = "../tool" }
 
 [dev-dependencies]
-insta = "1.7.1"
+insta = "1.39"
 wasm-bindgen-test = "0.3.0"

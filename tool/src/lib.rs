@@ -23,7 +23,7 @@ fn generate_all_grammars(item: &Item, out: &mut Vec<Value>) {
 
         if m.attrs
             .iter()
-            .any(|a| a.path == parse_quote!(rust_sitter::grammar))
+            .any(|a| a.path() == &parse_quote!(rust_sitter::grammar))
         {
             out.push(generate_grammar(m))
         }
@@ -35,7 +35,7 @@ use std::io::Write;
 use std::path::Path;
 
 #[cfg(feature = "build_parsers")]
-use tree_sitter_cli::generate;
+use tree_sitter_generate::generate_parser_for_grammar;
 
 #[cfg(feature = "build_parsers")]
 /// Using the `cc` crate, generates and compiles a C parser with Tree Sitter
@@ -49,7 +49,7 @@ pub fn build_parsers(root_file: &Path) {
         .unwrap_or(false);
     generate_grammars(root_file).iter().for_each(|grammar| {
         let (grammar_name, grammar_c) =
-            generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+            generate_parser_for_grammar(&grammar.to_string()).unwrap();
         let tempfile = tempfile::Builder::new()
             .prefix("grammar")
             .tempdir()
@@ -136,6 +136,7 @@ mod tests {
     use syn::parse_quote;
 
     use super::generate_grammar;
+    use tree_sitter_generate::generate_parser_for_grammar;
 
     #[test]
     fn enum_with_named_field() {
@@ -163,7 +164,7 @@ mod tests {
 
         let grammar = generate_grammar(&m);
         insta::assert_snapshot!(grammar);
-        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -187,7 +188,7 @@ mod tests {
 
         let grammar = generate_grammar(&m);
         insta::assert_snapshot!(grammar);
-        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -216,7 +217,7 @@ mod tests {
 
         let grammar = generate_grammar(&m);
         insta::assert_snapshot!(grammar);
-        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -247,7 +248,7 @@ mod tests {
 
         let grammar = generate_grammar(&m);
         insta::assert_snapshot!(grammar);
-        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -277,7 +278,7 @@ mod tests {
 
         let grammar = generate_grammar(&m);
         insta::assert_snapshot!(grammar);
-        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -305,7 +306,7 @@ mod tests {
 
         let grammar = generate_grammar(&m);
         insta::assert_snapshot!(grammar);
-        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -341,7 +342,7 @@ mod tests {
 
         let grammar = generate_grammar(&m);
         insta::assert_snapshot!(grammar);
-        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -373,7 +374,7 @@ mod tests {
 
         let grammar = generate_grammar(&m);
         insta::assert_snapshot!(grammar);
-        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -410,7 +411,7 @@ mod tests {
 
         let grammar = generate_grammar(&m);
         insta::assert_snapshot!(grammar);
-        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -440,7 +441,7 @@ mod tests {
 
         let grammar = generate_grammar(&m);
         insta::assert_snapshot!(grammar);
-        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -469,7 +470,7 @@ mod tests {
 
         let grammar = generate_grammar(&m);
         insta::assert_snapshot!(grammar);
-        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 
     #[test]
@@ -499,6 +500,6 @@ mod tests {
 
         let grammar = generate_grammar(&m);
         insta::assert_snapshot!(grammar);
-        tree_sitter_cli::generate::generate_parser_for_grammar(&grammar.to_string()).unwrap();
+        generate_parser_for_grammar(&grammar.to_string()).unwrap();
     }
 }

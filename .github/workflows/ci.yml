@@ -15,9 +15,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      run: cargo build --verbose
+      run: cargo build
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test
+    - name: Run macro tests
+      run: cargo test -p rust-sitter-macro -- tests
   test-wasm:
     runs-on: ubuntu-latest
 

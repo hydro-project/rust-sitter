@@ -12,19 +12,19 @@ categories = ["development-tools"]
 
 [features]
 default = ["build_parsers"]
-build_parsers = ["dep:tempfile", "dep:tree-sitter", "dep:tree-sitter-cli", "dep:cc"]
+build_parsers = ["dep:tempfile", "dep:tree-sitter", "dep:tree-sitter-generate", "dep:cc"]
 
 [dependencies]
-syn = { version = "1.0", features = [ "full", "extra-traits" ] }
-syn-inline-mod = "0.5.0"
-serde = { version = "1.0", features = ["derive"] }
+syn = { version = "2", features = [ "full", "extra-traits" ] }
+syn-inline-mod = "0.6"
+serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 rust-sitter-common = { version = "0.4.2", path = "../common" }
 
-tempfile = { version = "3.0.0", optional = true }
-tree-sitter = { package = "tree-sitter", version = "0.22.5", optional = true }
-tree-sitter-cli = { package = "tree-sitter-cli", version = "0.22.5", optional = true }
-cc = { version = "1.0.73", optional = true }
+tempfile = { version = "3", optional = true }
+tree-sitter = { version = "0.24.3", optional = true }
+tree-sitter-generate = { version = "0.24.3", optional = true }
+cc = { version = "1", optional = true }
 
 [dev-dependencies]
-insta = "1.7.1"
+insta = "1.39"

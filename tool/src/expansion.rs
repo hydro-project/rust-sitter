@@ -13,11 +13,11 @@ fn gen_field(
 ) -> (Value, bool) {
     let leaf_attr = leaf_attrs
         .iter()
-        .find(|attr| attr.path == syn::parse_quote!(rust_sitter::leaf));
+        .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::leaf));
 
     if leaf_attrs
         .iter()
-        .any(|attr| attr.path == syn::parse_quote!(rust_sitter::word))
+        .any(|attr| attr.path() == &syn::parse_quote!(rust_sitter::word))
     {
         if word_rule.is_some() {
             panic!("Multiple `word` rules specified");
@@ -121,7 +121,7 @@ fn gen_field(
 
         let delimited_attr = leaf_attrs
             .iter()
-            .find(|attr| attr.path == syn::parse_quote!(rust_sitter::delimited));
+            .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::delimited));
 
         let delimited_params =
             delimited_attr.and_then(|a| a.parse_args_with(FieldThenParams::parse).ok());
@@ -138,7 +138,7 @@ fn gen_field(
 
         let repeat_attr = leaf_attrs
             .iter()
-            .find(|attr| attr.path == syn::parse_quote!(rust_sitter::repeat));
+            .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::repeat));
 
         let repeat_params = repeat_attr.and_then(|a| {
             a.parse_args_with(Punctuated::<NameValueExpr, Token![,]>::parse_terminated)
@@ -289,7 +289,7 @@ fn gen_struct_or_variant(
             if field
                 .attrs
                 .iter()
-                .any(|attr| attr.path == syn::parse_quote!(rust_sitter::skip))
+                .any(|attr| attr.path() == &syn::parse_quote!(rust_sitter::skip))
             {
                 None
             } else {
@@ -306,19 +306,19 @@ fn gen_struct_or_variant(
 
     let prec_attr = attrs
         .iter()
-        .find(|attr| attr.path == syn::parse_quote!(rust_sitter::prec));
+        .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::prec));
 
     let prec_param = prec_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
 
     let prec_left_attr = attrs
         .iter()
-        .find(|attr| attr.path == syn::parse_quote!(rust_sitter::prec_left));
+        .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::prec_left));
 
     let prec_left_param = prec_left_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
 
     let prec_right_attr = attrs
         .iter()
-        .find(|attr| attr.path == syn::parse_quote!(rust_sitter::prec_right));
+        .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::prec_right));
 
     let prec_right_param = prec_right_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
 
@@ -327,6 +327,7 @@ fn gen_struct_or_variant(
             let dummy_field = Field {
                 attrs: attrs.clone(),
                 vis: Visibility::Inherited,
+                mutability: FieldMutability::None,
                 ident: None,
                 colon_token: None,
                 ty: Type::Tuple(TypeTuple {
@@ -398,7 +399,7 @@ pub fn generate_grammar(module: &ItemMod) -> Value {
         .attrs
         .iter()
         .find_map(|a| {
-            if a.path == syn::parse_quote!(rust_sitter::grammar) {
+            if a.path() == &syn::parse_quote!(rust_sitter::grammar) {
                 let grammar_name_expr = a.parse_args_with(Expr::parse).ok();
                 if let Some(Expr::Lit(ExprLit {
                     attrs: _,
@@ -424,7 +425,7 @@ pub fn generate_grammar(module: &ItemMod) -> Value {
             | Item::Struct(ItemStruct { ident, attrs, .. }) => {
                 if attrs
                     .iter()
-                    .any(|attr| attr.path == syn::parse_quote!(rust_sitter::language))
+                    .any(|attr| attr.path() == &syn::parse_quote!(rust_sitter::language))
                 {
                     Some(ident.clone())
                 } else {
@@ -487,7 +488,7 @@ pub fn generate_grammar(module: &ItemMod) -> Value {
 
         if attrs
             .iter()
-            .any(|a| a.path == syn::parse_quote!(rust_sitter::extra))
+            .any(|a| a.path() == &syn::parse_quote!(rust_sitter::extra))
         {
             extras_list.push(json!({
                 "type": "SYMBOL",

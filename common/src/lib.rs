@@ -35,7 +35,7 @@ impl Parse for FieldThenParams {
         let field = Field::parse_unnamed(input)?;
         let comma: Option<Token![,]> = input.parse()?;
         let params = if comma.is_some() {
-            input.parse_terminated(NameValueExpr::parse)?
+            Punctuated::parse_terminated_with(input, NameValueExpr::parse)?
         } else {
             Punctuated::new()
         };

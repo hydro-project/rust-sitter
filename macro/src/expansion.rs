@@ -7,7 +7,7 @@ use rust_sitter_common::*;
 use syn::{parse::Parse, punctuated::Punctuated, *};
 
 fn is_sitter_attr(attr: &Attribute) -> bool {
-    attr.path
+    attr.path()
         .segments
         .iter()
         .next()
@@ -35,7 +35,7 @@ fn gen_field(ident_str: String, leaf: Field) -> Expr {
     let leaf_attr = leaf
         .attrs
         .iter()
-        .find(|attr| attr.path == syn::parse_quote!(rust_sitter::leaf));
+        .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::leaf));
 
     let leaf_params = leaf_attr.and_then(|a| {
         a.parse_args_with(Punctuated::<NameValueExpr, Token![,]>::parse_terminated)
@@ -77,6 +77,7 @@ fn gen_struct_or_variant(
             let dummy_field = Field {
                 attrs: container_attrs,
                 vis: Visibility::Inherited,
+                mutability: FieldMutability::None,
                 ident: None,
                 colon_token: None,
                 ty: Type::Verbatim(quote!(())), // unit type.
@@ -93,7 +94,7 @@ fn gen_struct_or_variant(
                 let expr = if let Some(skip_attrs) = field
                     .attrs
                     .iter()
-                    .find(|attr| attr.path == syn::parse_quote!(rust_sitter::skip))
+                    .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::skip))
                 {
                     skip_attrs.parse_args::<syn::Expr>()?
                 } else {
@@ -167,7 +168,7 @@ pub fn expand_grammar(input: ItemMod) -> Result<ItemMod> {
         .attrs
         .iter()
         .find_map(|a| {
-            if a.path == syn::parse_quote!(rust_sitter::grammar) {
+            if a.path() == &syn::parse_quote!(rust_sitter::grammar) {
                 let grammar_name_expr = a.parse_args_with(Expr::parse).ok();
                 if let Some(Expr::Lit(ExprLit {
                     attrs: _,
@@ -202,7 +203,7 @@ pub fn expand_grammar(input: ItemMod) -> Result<ItemMod> {
             | Item::Struct(ItemStruct { ident, attrs, .. }) => {
                 if attrs
                     .iter()
-                    .any(|attr| attr.path == syn::parse_quote!(rust_sitter::language))
+                    .any(|attr| attr.path() == &syn::parse_quote!(rust_sitter::language))
                 {
                     Some(ident.clone())
                 } else {
@@ -334,6 +335,7 @@ pub fn expand_grammar(input: ItemMod) -> Result<ItemMod> {
     Ok(ItemMod {
         attrs: filtered_attrs,
         vis: input.vis,
+        unsafety: None,
         mod_token: input.mod_token,
         ident: input.ident,
         content: Some((brace, transformed)),

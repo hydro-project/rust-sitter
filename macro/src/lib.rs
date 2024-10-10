@@ -1,5 +1,5 @@
 use quote::ToTokens;
-use syn::{parse_macro_input, AttributeArgs, ItemMod};
+use syn::{parse_macro_input, ItemMod};
 
 mod errors;
 mod expansion;
@@ -212,10 +212,10 @@ pub fn grammar(
     attr: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    let attrs: AttributeArgs = parse_macro_input!(attr);
+    let attr_tokens: proc_macro2::TokenStream = attr.into();
     let module: ItemMod = parse_macro_input!(input);
     let expanded = expand_grammar(syn::parse_quote! {
-        #[rust_sitter::grammar[#(#attrs),*]]
+        #[rust_sitter::grammar[#attr_tokens]]
         #module
     })
     .map(ToTokens::into_token_stream)
