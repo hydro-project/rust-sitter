@@ -19,8 +19,8 @@ tree-sitter-c2rust = ["tree-sitter-runtime-c2rust"]
 tree-sitter-standard = ["tree-sitter-runtime-standard"]
 
 [dependencies]
-tree-sitter-runtime-c2rust = { package = "tree-sitter-c2rust", version = "0.24.3", optional = true }
-tree-sitter-runtime-standard = { package = "tree-sitter", version = "0.24.3", optional = true }
+tree-sitter-runtime-c2rust = { package = "tree-sitter-c2rust", version = "0.25.2", optional = true }
+tree-sitter-runtime-standard = { package = "tree-sitter", version = "0.25.2", optional = true }
 rust-sitter-macro = { version = "0.4.3", path = "../macro" }
 
 [dev-dependencies]
