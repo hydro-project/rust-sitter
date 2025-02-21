@@ -8,7 +8,7 @@ struct CollectingShunt<'a, I, A> {
     _marker: PhantomData<fn() -> A>,
 }
 
-impl<'a, I, A> Iterator for CollectingShunt<'a, I, A>
+impl<I, A> Iterator for CollectingShunt<'_, I, A>
 where
     I: Iterator<Item = syn::Result<A>>,
 {
