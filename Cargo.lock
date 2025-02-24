@@ -779,6 +779,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust-sitter-benchmarking"
+version = "0.4.4"
+dependencies = [
+ "criterion",
+ "rand",
+ "rust-sitter",
+ "rust-sitter-tool",
+]
+
+[[package]]
 name = "rust-sitter-common"
 version = "0.4.4"
 dependencies = [
@@ -792,9 +802,7 @@ version = "0.4.4"
 dependencies = [
  "codemap",
  "codemap-diagnostic",
- "criterion",
  "insta",
- "rand",
  "rust-sitter",
  "rust-sitter-tool",
  "wasm-bindgen-test",

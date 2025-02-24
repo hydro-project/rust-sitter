@@ -4,6 +4,12 @@ use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level, SpanLabel, SpanStyle};
 use rust_sitter::errors::{ParseError, ParseErrorReason};
 
+mod arithmetic;
+mod handles;
+mod optionals;
+mod repetitions;
+mod words;
+
 fn convert_parse_error_to_diagnostics(
     file_span: &codemap::Span,
     error: &ParseError,
@@ -67,7 +73,7 @@ fn main() {
             break;
         }
 
-        match rust_sitter_example::arithmetic::grammar::parse(input) {
+        match arithmetic::grammar::parse(input) {
             Ok(expr) => println!("{expr:?}"),
             Err(errs) => {
                 let mut codemap = CodeMap::new();
