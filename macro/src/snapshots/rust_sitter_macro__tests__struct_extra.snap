@@ -1,15 +1,16 @@
 ---
 source: macro/src/lib.rs
-expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                                #[rust_sitter :: grammar(\"test\")] mod grammar\n                                {\n                                    #[rust_sitter :: language] pub enum Expression\n                                    {\n                                        Number(#[rust_sitter ::\n                                        leaf(pattern = r\"\\d+\", transform = | v |\n                                        v.parse().unwrap())] i32,),\n                                    } #[rust_sitter :: extra] struct Whitespace\n                                    {\n                                        #[rust_sitter :: leaf(pattern = r\"\\s\")] _whitespace : (),\n                                    }\n                                }\n                            })?.to_token_stream().to_string())"
+expression: "rustfmt_code(&expand_grammar(parse_quote!\n{\n    #[rust_sitter::grammar(\"test\")] mod grammar\n    {\n        #[rust_sitter::language] pub enum Expression\n        {\n            Number(#[rust_sitter::leaf(pattern = r\"\\d+\", transform = |v|\n            v.parse().unwrap())] i32,),\n        } #[rust_sitter::extra] struct Whitespace\n        { #[rust_sitter::leaf(pattern = r\"\\s\")] _whitespace: (), }\n    }\n})? .to_token_stream().to_string())"
 ---
 mod grammar {
     pub enum Expression {
         Number(i32),
     }
-    impl ::rust_sitter::Extract<Expression> for Expression {
+    impl ::rust_sitter::Extract<Expression, AstArena> for Expression {
         type LeafFn = ();
         #[allow(non_snake_case)]
         fn extract(
+            arena: &mut AstArena,
             node: Option<::rust_sitter::tree_sitter::Node>,
             source: &[u8],
             _last_idx: usize,
@@ -32,8 +33,14 @@ mod grammar {
                                     ::rust_sitter::__private::extract_field::<
                                         rust_sitter::WithLeaf<i32>,
                                         _,
+                                        _,
                                     >(
-                                        cursor, source, last_idx, "0", Some(&|v| v.parse().unwrap())
+                                        arena,
+                                        cursor,
+                                        source,
+                                        last_idx,
+                                        "0",
+                                        Some(&|v| v.parse().unwrap()),
                                     )
                                 })
                             },
@@ -51,10 +58,11 @@ mod grammar {
     struct Whitespace {
         _whitespace: (),
     }
-    impl ::rust_sitter::Extract<Whitespace> for Whitespace {
+    impl ::rust_sitter::Extract<Whitespace, AstArena> for Whitespace {
         type LeafFn = ();
         #[allow(non_snake_case)]
         fn extract(
+            arena: &mut AstArena,
             node: Option<::rust_sitter::tree_sitter::Node>,
             source: &[u8],
             last_idx: usize,
@@ -64,7 +72,8 @@ mod grammar {
             ::rust_sitter::__private::extract_struct_or_variant(node, move |cursor, last_idx| {
                 Whitespace {
                     _whitespace: {
-                        ::rust_sitter::__private::extract_field::<(), _>(
+                        ::rust_sitter::__private::extract_field::<(), _, _>(
+                            arena,
                             cursor,
                             source,
                             last_idx,
@@ -82,13 +91,15 @@ mod grammar {
     pub fn language() -> ::rust_sitter::tree_sitter::Language {
         unsafe { tree_sitter_test() }
     }
+    type AstArena = ();
     #[doc = r" Parse an input string according to the grammar. Returns either any parsing errors that happened, or a"]
     #[doc = "[`Expression`]"]
     #[doc = r" instance containing the parsed structured data."]
     pub fn parse(
         input: &str,
     ) -> core::result::Result<Expression, Vec<::rust_sitter::errors::ParseError>> {
-        ::rust_sitter::__private::parse::<Expression>(input, language)
+        let (parsed, ()) =
+            ::rust_sitter::__private::parse::<Expression, AstArena>(input, language)?;
+        Ok(parsed)
     }
 }
-

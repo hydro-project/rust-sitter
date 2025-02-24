@@ -1,15 +1,16 @@
 ---
 source: macro/src/lib.rs
-expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                                #[rust_sitter :: grammar(\"test\")] mod grammar\n                                {\n                                    #[rust_sitter :: language] pub enum Expression\n                                    {\n                                        Number(#[rust_sitter ::\n                                        leaf(pattern = r\"\\d+\", transform = | v | v.parse :: < i32 >\n                                        ().unwrap())] i32),\n                                    }\n                                }\n                            })?.to_token_stream().to_string())"
+expression: "rustfmt_code(&expand_grammar(parse_quote!\n{\n    #[rust_sitter::grammar(\"test\")] mod grammar\n    {\n        #[rust_sitter::language] pub enum Expression\n        {\n            Number(#[rust_sitter::leaf(pattern = r\"\\d+\", transform = |v|\n            v.parse::<i32>().unwrap())] i32),\n        }\n    }\n})? .to_token_stream().to_string())"
 ---
 mod grammar {
     pub enum Expression {
         Number(i32),
     }
-    impl ::rust_sitter::Extract<Expression> for Expression {
+    impl ::rust_sitter::Extract<Expression, AstArena> for Expression {
         type LeafFn = ();
         #[allow(non_snake_case)]
         fn extract(
+            arena: &mut AstArena,
             node: Option<::rust_sitter::tree_sitter::Node>,
             source: &[u8],
             _last_idx: usize,
@@ -32,7 +33,9 @@ mod grammar {
                                     ::rust_sitter::__private::extract_field::<
                                         rust_sitter::WithLeaf<i32>,
                                         _,
+                                        _,
                                     >(
+                                        arena,
                                         cursor,
                                         source,
                                         last_idx,
@@ -58,13 +61,15 @@ mod grammar {
     pub fn language() -> ::rust_sitter::tree_sitter::Language {
         unsafe { tree_sitter_test() }
     }
+    type AstArena = ();
     #[doc = r" Parse an input string according to the grammar. Returns either any parsing errors that happened, or a"]
     #[doc = "[`Expression`]"]
     #[doc = r" instance containing the parsed structured data."]
     pub fn parse(
         input: &str,
     ) -> core::result::Result<Expression, Vec<::rust_sitter::errors::ParseError>> {
-        ::rust_sitter::__private::parse::<Expression>(input, language)
+        let (parsed, ()) =
+            ::rust_sitter::__private::parse::<Expression, AstArena>(input, language)?;
+        Ok(parsed)
     }
 }
-

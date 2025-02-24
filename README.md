@@ -235,3 +235,32 @@ pub struct CommaSeparatedExprs {
 
 ### `Box<T>`
 Boxes are automatically constructed around the inner type when parsing, but Rust Sitter doesn't do anything extra beyond that.
+
+
+### `rust_sitter::Handle<T>`
+Wherever you might use a `Box<T>`, you can instead use a `Handle<T>` to switch to an Arena pattern. If you use one or more `Handle`s in your grammar declaration, you need to also declare an Arena type for the objects to be stored in. This is done by adding a `#[rust_sitter::arena]` attribute to an empty struct declaration. For example:
+
+```rust
+#[rust_sitter::grammar("arithmetic")]
+pub mod grammar {
+    use rust_sitter::Handle;
+
+    #[rust_sitter::arena]
+    #[derive(Default, Debug)]
+    pub struct MyArena;
+
+    #[rust_sitter::language]
+    #[derive(PartialEq, Eq, Debug)]
+    pub enum Expression {
+        Number(#[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())] i32),
+        #[rust_sitter::prec_left(1)]
+        Add(
+            Handle<Expression>,
+            #[rust_sitter::leaf(text = "+")] (),
+            Handle<Expression>,
+        ),
+    }
+}
+```
+
+The `grammar::parse` method will then also return an instance of `MyArena`, which can be indexed into by the `Handle<Expression>` values.

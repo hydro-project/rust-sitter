@@ -46,6 +46,8 @@ fn gen_field(
     let mut skip_over = HashSet::new();
     skip_over.insert("Spanned");
     skip_over.insert("Box");
+    skip_over.insert("Handle");
+    skip_over.insert("rust_sitter::Handle");
 
     let (inner_type_vec, is_vec) = try_extract_inner_type(&leaf_type, "Vec", &skip_over);
     let (inner_type_option, is_option) = try_extract_inner_type(&leaf_type, "Option", &skip_over);
@@ -417,6 +419,22 @@ pub fn generate_grammar(module: &ItemMod) -> Value {
         .expect("Each grammar must have a name");
 
     let (_, contents) = module.content.as_ref().unwrap();
+
+    // Ignore any type marked `#[rust_sitter::arena]`
+    let contents = contents
+        .into_iter()
+        .filter(|item| {
+            if let Item::Enum(ItemEnum { attrs, .. }) | Item::Struct(ItemStruct { attrs, .. }) =
+                item
+            {
+                attrs
+                    .iter()
+                    .all(|attr| attr.path() != &syn::parse_quote!(rust_sitter::arena))
+            } else {
+                true
+            }
+        })
+        .collect::<Vec<_>>();
 
     let root_type = contents
         .iter()

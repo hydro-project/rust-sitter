@@ -1,16 +1,17 @@
 ---
 source: macro/src/lib.rs
-expression: "rustfmt_code(&expand_grammar(parse_quote! {\n                                #[rust_sitter :: grammar(\"test\")] mod grammar\n                                {\n                                    #[rust_sitter :: language] pub enum Expr\n                                    {\n                                        Number(#[rust_sitter ::\n                                        leaf(pattern = r\"\\d+\", transform = | v |\n                                        v.parse().unwrap())] u32), Neg\n                                        {\n                                            #[rust_sitter :: leaf(text = \"!\")] _bang : (), value : Box <\n                                            Expr >,\n                                        }\n                                    }\n                                }\n                            })?.to_token_stream().to_string())"
+expression: "rustfmt_code(&expand_grammar(parse_quote!\n{\n    #[rust_sitter::grammar(\"test\")] mod grammar\n    {\n        #[rust_sitter::language] pub enum Expr\n        {\n            Number(#[rust_sitter::leaf(pattern = r\"\\d+\", transform = |v|\n            v.parse().unwrap())] u32), Neg\n            { #[rust_sitter::leaf(text = \"!\")] _bang: (), value: Box<Expr>, }\n        }\n    }\n})? .to_token_stream().to_string())"
 ---
 mod grammar {
     pub enum Expr {
         Number(u32),
         Neg { _bang: (), value: Box<Expr> },
     }
-    impl ::rust_sitter::Extract<Expr> for Expr {
+    impl ::rust_sitter::Extract<Expr, AstArena> for Expr {
         type LeafFn = ();
         #[allow(non_snake_case)]
         fn extract(
+            arena: &mut AstArena,
             node: Option<::rust_sitter::tree_sitter::Node>,
             source: &[u8],
             _last_idx: usize,
@@ -33,8 +34,14 @@ mod grammar {
                                     ::rust_sitter::__private::extract_field::<
                                         rust_sitter::WithLeaf<u32>,
                                         _,
+                                        _,
                                     >(
-                                        cursor, source, last_idx, "0", Some(&|v| v.parse().unwrap())
+                                        arena,
+                                        cursor,
+                                        source,
+                                        last_idx,
+                                        "0",
+                                        Some(&|v| v.parse().unwrap()),
                                     )
                                 })
                             },
@@ -45,13 +52,13 @@ mod grammar {
                             node,
                             move |cursor, last_idx| Expr::Neg {
                                 _bang: {
-                                    ::rust_sitter::__private::extract_field::<(), _>(
-                                        cursor, source, last_idx, "_bang", None,
+                                    ::rust_sitter::__private::extract_field::<(), _, _>(
+                                        arena, cursor, source, last_idx, "_bang", None,
                                     )
                                 },
                                 value: {
-                                    ::rust_sitter::__private::extract_field::<Box<Expr>, _>(
-                                        cursor, source, last_idx, "value", None,
+                                    ::rust_sitter::__private::extract_field::<Box<Expr>, _, _>(
+                                        arena, cursor, source, last_idx, "value", None,
                                     )
                                 },
                             },
@@ -72,13 +79,14 @@ mod grammar {
     pub fn language() -> ::rust_sitter::tree_sitter::Language {
         unsafe { tree_sitter_test() }
     }
+    type AstArena = ();
     #[doc = r" Parse an input string according to the grammar. Returns either any parsing errors that happened, or a"]
     #[doc = "[`Expr`]"]
     #[doc = r" instance containing the parsed structured data."]
     pub fn parse(
         input: &str,
     ) -> core::result::Result<Expr, Vec<::rust_sitter::errors::ParseError>> {
-        ::rust_sitter::__private::parse::<Expr>(input, language)
+        let (parsed, ()) = ::rust_sitter::__private::parse::<Expr, AstArena>(input, language)?;
+        Ok(parsed)
     }
 }
-

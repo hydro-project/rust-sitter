@@ -1,0 +1,15 @@
+---
+source: example/src/handles.rs
+expression: "grammar::parse(\"1 - 2 -\")"
+---
+Err(
+    [
+        ParseError {
+            reason: MissingToken(
+                "Literal_Number_0",
+            ),
+            start: 7,
+            end: 7,
+        },
+    ],
+)
