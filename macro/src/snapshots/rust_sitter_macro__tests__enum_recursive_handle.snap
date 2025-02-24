@@ -111,9 +111,9 @@ mod grammar {
     }
     #[derive(Default)]
     pub struct MyArena {
-        pub arena_0: ::rust_sitter::Arena<Expression>,
+        arena_0: ::rust_sitter::Arena<Expression>,
     }
-    impl ::rust_sitter::__private::ArenaInsert<Expression> for MyArena {
+    impl ::rust_sitter::ArenaInsert<Expression> for MyArena {
         fn append(&mut self, value: Expression) -> ::rust_sitter::Handle<Expression> {
             self.arena_0.append(value)
         }

@@ -455,7 +455,7 @@ pub fn expand_grammar(input: ItemMod) -> Result<ItemMod> {
             .zip(&arena_names)
             .map(|(ty, field_name)| {
                 quote! {
-                    pub #field_name: ::rust_sitter::Arena<#ty>,
+                    #field_name: ::rust_sitter::Arena<#ty>,
                 }
             });
         arena_type.fields = syn::Fields::Named(syn::parse_quote_spanned! {span=> {
@@ -466,7 +466,7 @@ pub fn expand_grammar(input: ItemMod) -> Result<ItemMod> {
         for (i, ty) in handle_types.iter().enumerate() {
             let field_name = format_ident!("arena_{i}");
             transformed.push(syn::parse_quote_spanned! {span=>
-                impl ::rust_sitter::__private::ArenaInsert<#ty> for #arena_name {
+                impl ::rust_sitter::ArenaInsert<#ty> for #arena_name {
                     fn append(&mut self, value: #ty) -> ::rust_sitter::Handle<#ty> {
                         self.#field_name.append(value)
                     }

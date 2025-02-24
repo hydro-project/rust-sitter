@@ -86,8 +86,3 @@ pub fn parse<T: Extract<T, Arena>, Arena: Default>(
         Ok((root, arena))
     }
 }
-
-/// Used to constrain arena type of extract trait to be an arena.
-pub trait ArenaInsert<T> {
-    fn append(&mut self, value: T) -> crate::Handle<T>;
-}

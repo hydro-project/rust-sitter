@@ -242,7 +242,12 @@ impl<T> std::ops::Index<std::ops::Range<Handle<T>>> for Arena<T> {
     }
 }
 
-impl<T> __private::ArenaInsert<T> for Arena<T> {
+/// Implemented by an Arena which can be extended with new elements of type `T`.
+pub trait ArenaInsert<T> {
+    fn append(&mut self, value: T) -> Handle<T>;
+}
+
+impl<T> ArenaInsert<T> for Arena<T> {
     fn append(&mut self, value: T) -> Handle<T> {
         Arena::append(self, value)
     }
@@ -321,9 +326,7 @@ impl<T: Extract<U, Arena>, U, Arena> Extract<Box<U>, Arena> for Box<T> {
     }
 }
 
-impl<T: Extract<U, Arena>, U, Arena: __private::ArenaInsert<U>> Extract<Handle<U>, Arena>
-    for Handle<T>
-{
+impl<T: Extract<U, Arena>, U, Arena: ArenaInsert<U>> Extract<Handle<U>, Arena> for Handle<T> {
     type LeafFn = T::LeafFn;
     fn extract(
         arena: &mut Arena,
