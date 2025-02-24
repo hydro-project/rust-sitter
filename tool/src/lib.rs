@@ -223,6 +223,39 @@ mod tests {
     }
 
     #[test]
+    fn enum_recursive_handle() {
+        let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
+            mod grammar {
+                #[rust_sitter::arena]
+                #[derive(Default)]
+                pub struct TestArena;
+
+                #[rust_sitter::language]
+                pub enum Expression {
+                    Number(
+                        #[rust_sitter::leaf(pattern = r"\d+", transform = |v: &str| v.parse::<i32>().unwrap())]
+                        i32
+                    ),
+                    Neg(
+                        #[rust_sitter::leaf(text = "-", transform = |v| ())]
+                        (),
+                        rust_sitter::Handle<Expression>
+                    ),
+                }
+            }
+        } {
+            m
+        } else {
+            panic!()
+        };
+
+        let grammar = generate_grammar(&m);
+        insta::assert_snapshot!(grammar);
+        generate_parser_for_grammar(&grammar.to_string(), GENERATED_SEMANTIC_VERSION).unwrap();
+    }
+
+    #[test]
     fn enum_prec_left() {
         let m = if let syn::Item::Mod(m) = parse_quote! {
             #[rust_sitter::grammar("test")]

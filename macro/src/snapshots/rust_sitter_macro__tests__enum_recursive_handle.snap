@@ -1,17 +1,18 @@
 ---
 source: macro/src/lib.rs
-expression: "rustfmt_code(&expand_grammar(parse_quote!\n{\n    #[rust_sitter::grammar(\"test\")] mod grammar\n    {\n        #[rust_sitter::language] pub enum Expression\n        {\n            Number(#[rust_sitter::leaf(pattern = r\"\\d+\", transform = |v|\n            v.parse().unwrap())] i32),\n            Neg(#[rust_sitter::leaf(text = \"-\")] (), Box<Expression>),\n        }\n    }\n})? .to_token_stream().to_string())"
+expression: "rustfmt_code(&expand_grammar(parse_quote!\n{\n    #[rust_sitter::grammar(\"test\")] mod grammar\n    {\n        #[rust_sitter::arena] #[derive(Default)] pub struct MyArena;\n        #[rust_sitter::language] pub enum Expression\n        {\n            Number(#[rust_sitter::leaf(pattern = r\"\\d+\", transform = |v|\n            v.parse().unwrap())] i32),\n            Plus(#[rust_sitter::leaf(text = \"+\")] (), Handle<Expression>),\n            Neg(#[rust_sitter::leaf(text = \"-\")] (),\n            rust_sitter::Handle<Expression>),\n        }\n    }\n})? .to_token_stream().to_string())"
 ---
 mod grammar {
     pub enum Expression {
         Number(i32),
-        Neg((), Box<Expression>),
+        Plus((), Handle<Expression>),
+        Neg((), rust_sitter::Handle<Expression>),
     }
-    impl ::rust_sitter::Extract<Expression, AstArena> for Expression {
+    impl ::rust_sitter::Extract<Expression, MyArena> for Expression {
         type LeafFn = ();
         #[allow(non_snake_case)]
         fn extract(
-            arena: &mut AstArena,
+            arena: &mut MyArena,
             node: Option<::rust_sitter::tree_sitter::Node>,
             source: &[u8],
             _last_idx: usize,
@@ -47,6 +48,29 @@ mod grammar {
                             },
                         )
                     }
+                    "Expression_Plus" => {
+                        return ::rust_sitter::__private::extract_struct_or_variant(
+                            node,
+                            move |cursor, last_idx| {
+                                Expression::Plus(
+                                    {
+                                        ::rust_sitter::__private::extract_field::<(), _, _>(
+                                            arena, cursor, source, last_idx, "0", None,
+                                        )
+                                    },
+                                    {
+                                        ::rust_sitter::__private::extract_field::<
+                                            Handle<Expression>,
+                                            _,
+                                            _,
+                                        >(
+                                            arena, cursor, source, last_idx, "1", None
+                                        )
+                                    },
+                                )
+                            },
+                        )
+                    }
                     "Expression_Neg" => {
                         return ::rust_sitter::__private::extract_struct_or_variant(
                             node,
@@ -59,7 +83,7 @@ mod grammar {
                                     },
                                     {
                                         ::rust_sitter::__private::extract_field::<
-                                            Box<Expression>,
+                                            rust_sitter::Handle<Expression>,
                                             _,
                                             _,
                                         >(
@@ -85,15 +109,32 @@ mod grammar {
     pub fn language() -> ::rust_sitter::tree_sitter::Language {
         unsafe { tree_sitter_test() }
     }
-    type AstArena = ();
+    #[derive(Default)]
+    pub struct MyArena {
+        pub arena_0: ::rust_sitter::Arena<Expression>,
+    }
+    impl ::rust_sitter::__private::ArenaInsert<Expression> for MyArena {
+        fn append(&mut self, value: Expression) -> ::rust_sitter::Handle<Expression> {
+            self.arena_0.append(value)
+        }
+    }
+    impl ::std::ops::Index<::rust_sitter::Handle<Expression>> for MyArena {
+        type Output = Expression;
+        fn index(&self, index: ::rust_sitter::Handle<Expression>) -> &Expression {
+            &self.arena_0[index]
+        }
+    }
+    impl ::std::ops::IndexMut<::rust_sitter::Handle<Expression>> for MyArena {
+        fn index_mut(&mut self, index: ::rust_sitter::Handle<Expression>) -> &mut Expression {
+            &mut self.arena_0[index]
+        }
+    }
     #[doc = r" Parse an input string according to the grammar. Returns either any parsing errors that happened, or a"]
     #[doc = "[`Expression`]"]
     #[doc = r" instance containing the parsed structured data."]
     pub fn parse(
         input: &str,
-    ) -> core::result::Result<Expression, Vec<::rust_sitter::errors::ParseError>> {
-        let (parsed, ()) =
-            ::rust_sitter::__private::parse::<Expression, AstArena>(input, language)?;
-        Ok(parsed)
+    ) -> core::result::Result<(Expression, MyArena), Vec<::rust_sitter::errors::ParseError>> {
+        ::rust_sitter::__private::parse::<Expression, MyArena>(input, language)
     }
 }

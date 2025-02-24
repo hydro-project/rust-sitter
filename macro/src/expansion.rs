@@ -2,8 +2,9 @@ use std::collections::HashSet;
 
 use crate::errors::IteratorExt as _;
 use proc_macro2::Span;
-use quote::{quote, ToTokens};
+use quote::{format_ident, quote, ToTokens};
 use rust_sitter_common::*;
+use spanned::Spanned;
 use syn::{parse::Parse, punctuated::Punctuated, *};
 
 fn is_sitter_attr(attr: &Attribute) -> bool {
@@ -55,6 +56,8 @@ fn gen_field(ident_str: String, leaf: Field) -> Expr {
             non_leaf.insert("Box");
             non_leaf.insert("Option");
             non_leaf.insert("Vec");
+            non_leaf.insert("Handle");
+            non_leaf.insert("rust_sitter::Handle");
             let wrapped_leaf_type = wrap_leaf_type(&leaf_type, &non_leaf);
             (wrapped_leaf_type, syn::parse_quote!(Some(&#closure)))
         }
@@ -62,7 +65,7 @@ fn gen_field(ident_str: String, leaf: Field) -> Expr {
     };
 
     syn::parse_quote!({
-        ::rust_sitter::__private::extract_field::<#leaf_type,_>(cursor, source, last_idx, #ident_str, #closure_expr)
+        ::rust_sitter::__private::extract_field::<#leaf_type,_,_>(arena, cursor, source, last_idx, #ident_str, #closure_expr)
     })
 }
 
@@ -189,7 +192,7 @@ pub fn expand_grammar(input: ItemMod) -> Result<ItemMod> {
         .transpose()?
         .ok_or_else(|| syn::Error::new(Span::call_site(), "Each grammar must have a name"))?;
 
-    let (brace, new_contents) = input.content.ok_or_else(|| {
+    let (brace, mut new_contents) = input.content.ok_or_else(|| {
         syn::Error::new(
             Span::call_site(),
             "Expected the module to have inline contents (`mod my_module { .. }` syntax)",
@@ -219,6 +222,56 @@ pub fn expand_grammar(input: ItemMod) -> Result<ItemMod> {
             )
         })?;
 
+    // Find and remove type marked as `#[rust_sitter::arena]`, if present
+    let arena_index_type = new_contents
+        .iter()
+        .enumerate()
+        .find_map(|(index, item)| match item {
+            Item::Struct(ItemStruct { attrs, .. }) => {
+                if attrs
+                    .iter()
+                    .any(|attr| attr.path() == &syn::parse_quote!(rust_sitter::arena))
+                {
+                    Some((index, item.clone()))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        });
+    let arena_index = arena_index_type.as_ref().map(|(index, _)| *index);
+    let arena_type = arena_index_type.map(|(_, ty)| ty);
+    if let Some(arena_index) = arena_index {
+        new_contents.remove(arena_index);
+    }
+
+    // If an arena type was specified, ensure it is an empty struct.
+    let arena_type = match arena_type {
+        None => None,
+        Some(Item::Struct(item)) if item.fields.is_empty() && item.generics.params.is_empty() => {
+            Some(ItemStruct {
+                // Remove arena attribute.
+                attrs: item
+                    .attrs
+                    .into_iter()
+                    .filter(|attr| attr.path() != &syn::parse_quote!(rust_sitter::arena))
+                    .collect(),
+                ..item
+            })
+        }
+        Some(other) => {
+            return Err(syn::Error::new(
+                other.span(),
+                "The `#[rust_sitter::arena]` attribute must be applied to an empty struct",
+            ))
+        }
+    };
+    let arena_name = arena_type
+        .as_ref()
+        .map(|item| item.ident.clone())
+        .unwrap_or(format_ident!("AstArena"));
+
+    // Generate grammar extraction logic
     let mut transformed: Vec<Item> = new_contents
         .iter()
         .cloned()
@@ -248,11 +301,11 @@ pub fn expand_grammar(input: ItemMod) -> Result<ItemMod> {
 
                     let enum_name = &e.ident;
                     let extract_impl: Item = syn::parse_quote! {
-                        impl ::rust_sitter::Extract<#enum_name> for #enum_name {
+                        impl ::rust_sitter::Extract<#enum_name, #arena_name> for #enum_name {
                             type LeafFn = ();
 
                             #[allow(non_snake_case)]
-                            fn extract(node: Option<::rust_sitter::tree_sitter::Node>, source: &[u8], _last_idx: usize, _leaf_fn: Option<&Self::LeafFn>) -> Self {
+                            fn extract(arena: &mut #arena_name, node: Option<::rust_sitter::tree_sitter::Node>, source: &[u8], _last_idx: usize, _leaf_fn: Option<&Self::LeafFn>) -> Self {
                                 let node = node.unwrap();
 
                                 let mut cursor = node.walk();
@@ -288,11 +341,11 @@ pub fn expand_grammar(input: ItemMod) -> Result<ItemMod> {
 
 
                     let extract_impl: Item = syn::parse_quote! {
-                        impl ::rust_sitter::Extract<#struct_name> for #struct_name {
+                        impl ::rust_sitter::Extract<#struct_name, #arena_name> for #struct_name {
                             type LeafFn = ();
 
                             #[allow(non_snake_case)]
-                            fn extract(node: Option<::rust_sitter::tree_sitter::Node>, source: &[u8], last_idx: usize, _leaf_fn: Option<&Self::LeafFn>) -> Self {
+                            fn extract(arena: &mut #arena_name, node: Option<::rust_sitter::tree_sitter::Node>, source: &[u8], last_idx: usize, _leaf_fn: Option<&Self::LeafFn>) -> Self {
                                 let node = node.unwrap();
                                 #extract_expr
                             }
@@ -320,13 +373,147 @@ pub fn expand_grammar(input: ItemMod) -> Result<ItemMod> {
         }
     });
 
+    // Gather all fields of the form `Handle<T>`.
+    let mut handle_types: HashSet<syn::Type> = HashSet::new();
+    fn add_ty(handle_types: &mut HashSet<syn::Type>, t: &syn::Type) {
+        match t {
+            syn::Type::Path(p) => {
+                let segments = &p
+                    .path
+                    .segments
+                    .iter()
+                    .map(|s| s.ident.to_string())
+                    .collect::<Vec<_>>();
+                if segments == &["Handle"] || segments == &["rust_sitter", "Handle"] {
+                    if let syn::PathArguments::AngleBracketed(
+                        syn::AngleBracketedGenericArguments { args, .. },
+                    ) = &p.path.segments.last().unwrap().arguments
+                    {
+                        if let syn::GenericArgument::Type(ty) = &args[0] {
+                            handle_types.insert(ty.clone());
+                        }
+                    }
+                }
+
+                // Recurse on generics for Vec<Handle<T>> etc
+                for segment in &p.path.segments {
+                    if let syn::PathArguments::AngleBracketed(
+                        syn::AngleBracketedGenericArguments { args, .. },
+                    ) = &segment.arguments
+                    {
+                        for arg in args {
+                            if let syn::GenericArgument::Type(ty) = arg {
+                                add_ty(handle_types, ty);
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    for c in &new_contents {
+        match c {
+            Item::Enum(item_enum) => {
+                for variant in &item_enum.variants {
+                    for field in &variant.fields {
+                        add_ty(&mut handle_types, &field.ty);
+                    }
+                }
+            }
+            Item::Struct(item_struct) => {
+                for field in &item_struct.fields {
+                    add_ty(&mut handle_types, &field.ty);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Check that we have an arena struct if at least one handle type is referenced.
+    if !handle_types.is_empty() {
+        if arena_type.is_none() {
+            return Err(syn::Error::new(
+                Span::call_site(),
+                "at least one handle type is referenced, but no arena type is defined using #[rust_sitter::arena]",
+            ));
+        }
+    }
+
+    // Generate an arena type for all handles referenced.
+    if let Some(mut arena_type) = arena_type {
+        let span = arena_type.ident.span();
+
+        let arena_names: Vec<_> = handle_types
+            .iter()
+            .enumerate()
+            .map(|(i, _)| format_ident!("arena_{i}"))
+            .collect();
+
+        let arenas = handle_types
+            .iter()
+            .zip(&arena_names)
+            .map(|(ty, field_name)| {
+                quote! {
+                    pub #field_name: ::rust_sitter::Arena<#ty>,
+                }
+            });
+        arena_type.fields = syn::Fields::Named(syn::parse_quote_spanned! {span=> {
+            #(#arenas)*
+        } });
+        transformed.push(arena_type.into());
+
+        for (i, ty) in handle_types.iter().enumerate() {
+            let field_name = format_ident!("arena_{i}");
+            transformed.push(syn::parse_quote_spanned! {span=>
+                impl ::rust_sitter::__private::ArenaInsert<#ty> for #arena_name {
+                    fn append(&mut self, value: #ty) -> ::rust_sitter::Handle<#ty> {
+                        self.#field_name.append(value)
+                    }
+                }
+            });
+            transformed.push(syn::parse_quote_spanned! {span=>
+                impl ::std::ops::Index<::rust_sitter::Handle<#ty>> for #arena_name {
+                    type Output = #ty;
+                    fn index(&self, index: ::rust_sitter::Handle<#ty>) -> &#ty {
+                        &self.#field_name[index]
+                    }
+                }
+            });
+            transformed.push(syn::parse_quote_spanned! {span=>
+                impl ::std::ops::IndexMut<::rust_sitter::Handle<#ty>> for #arena_name {
+                    fn index_mut(&mut self, index: ::rust_sitter::Handle<#ty>) -> &mut #ty {
+                        &mut self.#field_name[index]
+                    }
+                }
+            });
+        }
+    } else {
+        transformed.push(syn::parse_quote! {
+            type #arena_name = ();
+        });
+    }
+
+    // Calculate the return type and return map based on if any handles were used.
+    let return_type = if handle_types.is_empty() {
+        quote! { #root_type }
+    } else {
+        quote! { (#root_type, #arena_name) }
+    };
+    let mut return_value = quote! {
+        ::rust_sitter::__private::parse::<#root_type, #arena_name>(input, language)
+    };
+    if handle_types.is_empty() {
+        return_value = quote! { let (parsed, ()) = #return_value?; Ok(parsed) };
+    }
+
     let root_type_docstr = format!("[`{root_type}`]");
     transformed.push(syn::parse_quote! {
     /// Parse an input string according to the grammar. Returns either any parsing errors that happened, or a
     #[doc = #root_type_docstr]
     /// instance containing the parsed structured data.
-      pub fn parse(input: &str) -> core::result::Result<#root_type, Vec<::rust_sitter::errors::ParseError>> {
-        ::rust_sitter::__private::parse::<#root_type>(input, language)
+      pub fn parse(input: &str) -> core::result::Result<#return_type, Vec<::rust_sitter::errors::ParseError>> {
+         #return_value
       }
   });
 

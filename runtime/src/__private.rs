@@ -8,7 +8,7 @@ use crate::{tree_sitter, Extract};
 
 pub fn extract_struct_or_variant<T>(
     node: tree_sitter::Node,
-    construct_expr: impl Fn(&mut Option<tree_sitter::TreeCursor>, &mut usize) -> T,
+    construct_expr: impl FnOnce(&mut Option<tree_sitter::TreeCursor>, &mut usize) -> T,
 ) -> T {
     let mut parent_cursor = node.walk();
     construct_expr(
@@ -21,7 +21,8 @@ pub fn extract_struct_or_variant<T>(
     )
 }
 
-pub fn extract_field<LT: Extract<T>, T>(
+pub fn extract_field<LT: Extract<T, Arena>, T, Arena>(
+    arena: &mut Arena,
     cursor_opt: &mut Option<tree_sitter::TreeCursor>,
     source: &[u8],
     last_idx: &mut usize,
@@ -33,7 +34,7 @@ pub fn extract_field<LT: Extract<T>, T>(
             let n = cursor.node();
             if let Some(name) = cursor.field_name() {
                 if name == field_name {
-                    let out = LT::extract(Some(n), source, *last_idx, closure_ref);
+                    let out = LT::extract(arena, Some(n), source, *last_idx, closure_ref);
 
                     if !cursor.goto_next_sibling() {
                         *cursor_opt = None;
@@ -43,25 +44,25 @@ pub fn extract_field<LT: Extract<T>, T>(
 
                     return out;
                 } else {
-                    return LT::extract(None, source, *last_idx, closure_ref);
+                    return LT::extract(arena, None, source, *last_idx, closure_ref);
                 }
             } else {
                 *last_idx = n.end_byte();
             }
 
             if !cursor.goto_next_sibling() {
-                return LT::extract(None, source, *last_idx, closure_ref);
+                return LT::extract(arena, None, source, *last_idx, closure_ref);
             }
         }
     } else {
-        LT::extract(None, source, *last_idx, closure_ref)
+        LT::extract(arena, None, source, *last_idx, closure_ref)
     }
 }
 
-pub fn parse<T: Extract<T>>(
+pub fn parse<T: Extract<T, Arena>, Arena: Default>(
     input: &str,
     language: impl Fn() -> tree_sitter::Language,
-) -> core::result::Result<T, Vec<crate::errors::ParseError>> {
+) -> core::result::Result<(T, Arena), Vec<crate::errors::ParseError>> {
     let mut parser = crate::tree_sitter::Parser::new();
     parser.set_language(&language()).unwrap();
     let tree = parser.parse(input, None).unwrap();
@@ -73,11 +74,20 @@ pub fn parse<T: Extract<T>>(
 
         Err(errors)
     } else {
-        Ok(<T as crate::Extract<_>>::extract(
+        let mut arena = Arena::default();
+        let root = <T as crate::Extract<_, Arena>>::extract(
+            &mut arena,
             Some(root_node),
             input.as_bytes(),
             0,
             None,
-        ))
+        );
+
+        Ok((root, arena))
     }
+}
+
+/// Used to constrain arena type of extract trait to be an arena.
+pub trait ArenaInsert<T> {
+    fn append(&mut self, value: T) -> crate::Handle<T>;
 }

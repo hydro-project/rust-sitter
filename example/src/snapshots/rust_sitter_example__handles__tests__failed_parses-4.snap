@@ -1,0 +1,23 @@
+---
+source: example/src/handles.rs
+expression: "grammar::parse(\"1a\")"
+---
+Err(
+    [
+        ParseError {
+            reason: FailedNode(
+                [
+                    ParseError {
+                        reason: UnexpectedToken(
+                            "a",
+                        ),
+                        start: 1,
+                        end: 2,
+                    },
+                ],
+            ),
+            start: 1,
+            end: 2,
+        },
+    ],
+)
