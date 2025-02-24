@@ -1,4 +1,4 @@
-#[rust_sitter::grammar("grammar_arithmetic")]
+#[rust_sitter::grammar("handles")]
 pub mod grammar {
     use rust_sitter::Handle;
 

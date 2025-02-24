@@ -25,6 +25,40 @@ pub mod grammar {
     }
 }
 
+/// Used for benchmarking against non-handle definition. Should match `grammar` exactly, but with handles for boxes.
+#[rust_sitter::grammar("arithmetic_handles")]
+pub mod grammar_handles {
+    use rust_sitter::Handle;
+
+    #[rust_sitter::arena]
+    #[derive(Default, Debug)]
+    pub struct Arena;
+
+    #[rust_sitter::language]
+    #[derive(PartialEq, Eq, Debug)]
+    pub enum Expression {
+        Number(#[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())] i32),
+        #[rust_sitter::prec_left(1)]
+        Sub(
+            Handle<Expression>,
+            #[rust_sitter::leaf(text = "-")] (),
+            Handle<Expression>,
+        ),
+        #[rust_sitter::prec_left(2)]
+        Mul(
+            Handle<Expression>,
+            #[rust_sitter::leaf(text = "*")] (),
+            Handle<Expression>,
+        ),
+    }
+
+    #[rust_sitter::extra]
+    struct Whitespace {
+        #[rust_sitter::leaf(pattern = r"\s")]
+        _whitespace: (),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
