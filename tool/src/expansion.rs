@@ -422,7 +422,7 @@ pub fn generate_grammar(module: &ItemMod) -> Value {
 
     // Ignore any type marked `#[rust_sitter::arena]`
     let contents = contents
-        .into_iter()
+        .iter()
         .filter(|item| {
             if let Item::Enum(ItemEnum { attrs, .. }) | Item::Struct(ItemStruct { attrs, .. }) =
                 item

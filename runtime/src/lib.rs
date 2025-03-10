@@ -175,7 +175,7 @@ impl<T> Arena<T> {
     }
 
     pub fn try_get(&self, handle: Handle<T>) -> Result<&T, BadHandleError> {
-        self.data.get(handle.index).ok_or_else(|| BadHandleError)
+        self.data.get(handle.index).ok_or(BadHandleError)
     }
 
     /// Get a mutable reference to an element in the arena.

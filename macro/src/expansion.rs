@@ -376,40 +376,37 @@ pub fn expand_grammar(input: ItemMod) -> Result<ItemMod> {
     // Gather all fields of the form `Handle<T>`.
     let mut handle_types: HashSet<syn::Type> = HashSet::new();
     fn add_ty(handle_types: &mut HashSet<syn::Type>, t: &syn::Type) {
-        match t {
-            syn::Type::Path(p) => {
-                let segments = &p
-                    .path
-                    .segments
-                    .iter()
-                    .map(|s| s.ident.to_string())
-                    .collect::<Vec<_>>();
-                if segments == &["Handle"] || segments == &["rust_sitter", "Handle"] {
-                    if let syn::PathArguments::AngleBracketed(
-                        syn::AngleBracketedGenericArguments { args, .. },
-                    ) = &p.path.segments.last().unwrap().arguments
-                    {
-                        if let syn::GenericArgument::Type(ty) = &args[0] {
-                            handle_types.insert(ty.clone());
-                        }
+        if let syn::Type::Path(p) = t {
+            let segments = &p
+                .path
+                .segments
+                .iter()
+                .map(|s| s.ident.to_string())
+                .collect::<Vec<_>>();
+            if segments == &["Handle"] || segments == &["rust_sitter", "Handle"] {
+                if let syn::PathArguments::AngleBracketed(
+                    syn::AngleBracketedGenericArguments { args, .. },
+                ) = &p.path.segments.last().unwrap().arguments
+                {
+                    if let syn::GenericArgument::Type(ty) = &args[0] {
+                        handle_types.insert(ty.clone());
                     }
                 }
+            }
 
-                // Recurse on generics for Vec<Handle<T>> etc
-                for segment in &p.path.segments {
-                    if let syn::PathArguments::AngleBracketed(
-                        syn::AngleBracketedGenericArguments { args, .. },
-                    ) = &segment.arguments
-                    {
-                        for arg in args {
-                            if let syn::GenericArgument::Type(ty) = arg {
-                                add_ty(handle_types, ty);
-                            }
+            // Recurse on generics for Vec<Handle<T>> etc
+            for segment in &p.path.segments {
+                if let syn::PathArguments::AngleBracketed(
+                    syn::AngleBracketedGenericArguments { args, .. },
+                ) = &segment.arguments
+                {
+                    for arg in args {
+                        if let syn::GenericArgument::Type(ty) = arg {
+                            add_ty(handle_types, ty);
                         }
                     }
                 }
             }
-            _ => {}
         }
     }
     for c in &new_contents {
@@ -431,13 +428,11 @@ pub fn expand_grammar(input: ItemMod) -> Result<ItemMod> {
     }
 
     // Check that we have an arena struct if at least one handle type is referenced.
-    if !handle_types.is_empty() {
-        if arena_type.is_none() {
-            return Err(syn::Error::new(
-                Span::call_site(),
-                "at least one handle type is referenced, but no arena type is defined using #[rust_sitter::arena]",
-            ));
-        }
+    if !handle_types.is_empty() && arena_type.is_none() {
+        return Err(syn::Error::new(
+            Span::call_site(),
+            "at least one handle type is referenced, but no arena type is defined using #[rust_sitter::arena]",
+        ));
     }
 
     // Generate an arena type for all handles referenced.
