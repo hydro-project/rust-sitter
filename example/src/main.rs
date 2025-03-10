@@ -7,6 +7,7 @@ use rust_sitter::errors::{ParseError, ParseErrorReason};
 mod arithmetic;
 mod handles;
 mod optionals;
+mod partial_handles;
 mod repetitions;
 mod words;
 
