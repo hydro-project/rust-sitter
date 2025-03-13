@@ -113,16 +113,14 @@ impl Precs {
             rule
         };
 
-        let rule = if immediate {
+        if immediate {
             json!({
                 "type": "IMMEDIATE_TOKEN",
                 "content": rule
             })
         } else {
             rule
-        };
-
-        rule
+        }
     }
 }
 
@@ -179,7 +177,7 @@ fn gen_field(
     let (inner_type_vec, is_vec) = try_extract_inner_type(&leaf_type, "Vec", &skip_over);
     let (inner_type_option, is_option) = try_extract_inner_type(&leaf_type, "Option", &skip_over);
 
-    let (rule, field_optional) = if !is_vec && !is_option {
+    if !is_vec && !is_option {
         if let Some(Expr::Lit(lit)) = pattern_param {
             if let Lit::Str(s) = &lit.lit {
                 out.insert(
@@ -367,9 +365,7 @@ fn gen_field(
         }
 
         (precs.apply(field_json), true)
-    };
-
-    (rule, field_optional)
+    }
 }
 
 fn gen_struct_or_variant(
