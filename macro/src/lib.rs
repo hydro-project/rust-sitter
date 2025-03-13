@@ -170,9 +170,9 @@ pub fn prec_right(
 /// [`conflicts`], and when there is a genuine ambiguity: multiple rules correctly
 /// match a given piece of code. In that event, Rust-sitter compares the total dynamic precedence
 /// associated with each rule, and selects the one with the highest total.
-/// 
+///
 /// This is similar to dynamic precedence directives in Bison grammars.
-/// 
+///
 /// ## Example
 /// ```ignore
 /// #[rust_sitter::prec_dynamic(1)]
@@ -185,6 +185,23 @@ pub fn prec_dynamic(
     item
 }
 
+#[proc_macro_attribute]
+/// Usually, whitespace is optional before each token. This attribute means that the token will only match if there is no whitespace.
+///
+/// ## Example
+/// ```ignore
+/// struct StringFragment(
+///     #[rust_sitter::immediate]
+///     #[rust_sitter::leaf(pattern = r"[^"\\]+")]
+///     ()
+/// );
+/// ```
+pub fn immediate(
+    _attr: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    item
+}
 
 #[proc_macro_attribute]
 /// On `Vec<_>` typed fields, specifies a non-terminal that should be parsed in between the elements.

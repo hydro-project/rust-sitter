@@ -4,6 +4,128 @@ use rust_sitter_common::*;
 use serde_json::{json, Map, Value};
 use syn::{parse::Parse, punctuated::Punctuated, *};
 
+struct Precs {
+    prec_param: Option<Expr>,
+    prec_left_param: Option<Expr>,
+    prec_right_param: Option<Expr>,
+    prec_dynamic_param: Option<Expr>,
+    immediate: bool,
+}
+
+impl Precs {
+    fn new(attrs: &[Attribute]) -> Self {
+        let prec_attr = attrs
+            .iter()
+            .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::prec));
+
+        let prec_param = prec_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
+
+        let prec_left_attr = attrs
+            .iter()
+            .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::prec_left));
+
+        let prec_left_param = prec_left_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
+
+        let prec_right_attr = attrs
+            .iter()
+            .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::prec_right));
+
+        let prec_right_param = prec_right_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
+
+        let prec_dynamic_attr = attrs
+            .iter()
+            .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::prec_dynamic));
+
+        let prec_dynamic_param =
+            prec_dynamic_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
+
+        let immediate_attr = attrs
+            .iter()
+            .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::immediate));
+
+        Self {
+            prec_param,
+            prec_left_param,
+            prec_right_param,
+            prec_dynamic_param,
+            immediate: immediate_attr.is_some(),
+        }
+    }
+
+    fn apply(self, rule: serde_json::Value) -> serde_json::Value {
+        let Self {
+            prec_param,
+            prec_left_param,
+            prec_right_param,
+            prec_dynamic_param,
+            immediate,
+        } = self;
+
+        let rule = if let Some(Expr::Lit(lit)) = prec_param {
+            if prec_left_param.is_some() || prec_right_param.is_some() {
+                panic!("only one of prec, prec_left, and prec_right can be specified");
+            }
+
+            if let Lit::Int(i) = &lit.lit {
+                json!({
+                    "type": "PREC",
+                    "value": i.base10_parse::<u32>().unwrap(),
+                    "content": rule
+                })
+            } else {
+                panic!("Expected integer literal for precedence");
+            }
+        } else if let Some(Expr::Lit(lit)) = prec_left_param {
+            if prec_right_param.is_some() {
+                panic!("only one of prec, prec_left, and prec_right can be specified");
+            }
+
+            if let Lit::Int(i) = &lit.lit {
+                json!({
+                    "type": "PREC_LEFT",
+                    "value": i.base10_parse::<u32>().unwrap(),
+                    "content": rule
+                })
+            } else {
+                panic!("Expected integer literal for precedence");
+            }
+        } else if let Some(Expr::Lit(lit)) = prec_right_param {
+            if let Lit::Int(i) = &lit.lit {
+                json!({
+                    "type": "PREC_RIGHT",
+                    "value": i.base10_parse::<u32>().unwrap(),
+                    "content": rule
+                })
+            } else {
+                panic!("Expected integer literal for precedence");
+            }
+        } else if let Some(Expr::Lit(lit)) = prec_dynamic_param {
+            if let Lit::Int(i) = &lit.lit {
+                json!({
+                    "type": "PREC_DYNAMIC",
+                    "value": i.base10_parse::<u32>().unwrap(),
+                    "content": rule
+                })
+            } else {
+                panic!("Expected integer literal for dynamic precedence");
+            }
+        } else {
+            rule
+        };
+
+        let rule = if immediate {
+            json!({
+                "type": "IMMEDIATE_TOKEN",
+                "content": rule
+            })
+        } else {
+            rule
+        };
+
+        rule
+    }
+}
+
 fn gen_field(
     path: String,
     leaf_type: Type,
@@ -24,6 +146,13 @@ fn gen_field(
         }
 
         *word_rule = Some(path.clone());
+    }
+
+    let precs = Precs::new(&leaf_attrs);
+    if precs.prec_left_param.is_some() || precs.prec_right_param.is_some() {
+        panic!(
+            "The attributes `prec_left` and `prec_right` cannot be applied to a non-struct type"
+        );
     }
 
     let leaf_params = leaf_attr.and_then(|a| {
@@ -50,15 +179,15 @@ fn gen_field(
     let (inner_type_vec, is_vec) = try_extract_inner_type(&leaf_type, "Vec", &skip_over);
     let (inner_type_option, is_option) = try_extract_inner_type(&leaf_type, "Option", &skip_over);
 
-    if !is_vec && !is_option {
+    let (rule, field_optional) = if !is_vec && !is_option {
         if let Some(Expr::Lit(lit)) = pattern_param {
             if let Lit::Str(s) = &lit.lit {
                 out.insert(
                     path.clone(),
-                    json!({
+                    precs.apply(json!({
                         "type": "PATTERN",
                         "value": s.value(),
-                    }),
+                    })),
                 );
 
                 (
@@ -75,10 +204,10 @@ fn gen_field(
             if let Lit::Str(s) = &lit.lit {
                 out.insert(
                     path.clone(),
-                    json!({
+                    precs.apply(json!({
                         "type": "STRING",
                         "value": s.value(),
-                    }),
+                    })),
                 );
 
                 (
@@ -103,10 +232,10 @@ fn gen_field(
             };
 
             (
-                json!({
+                precs.apply(json!({
                     "type": "SYMBOL",
                     "name": symbol_name,
-                }),
+                })),
                 false,
             )
         }
@@ -216,6 +345,8 @@ fn gen_field(
             })
         };
 
+        let vec_contents = precs.apply(vec_contents);
+
         let contents_ident = format!("{path}_vec_contents");
         out.insert(contents_ident.clone(), vec_contents);
 
@@ -235,8 +366,10 @@ fn gen_field(
             panic!("Option<Option<_>> is not supported");
         }
 
-        (field_json, true)
-    }
+        (precs.apply(field_json), true)
+    };
+
+    (rule, field_optional)
 }
 
 fn gen_struct_or_variant(
@@ -304,29 +437,7 @@ fn gen_struct_or_variant(
         })
         .collect::<Vec<Value>>();
 
-    let prec_attr = attrs
-        .iter()
-        .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::prec));
-
-    let prec_param = prec_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
-
-    let prec_left_attr = attrs
-        .iter()
-        .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::prec_left));
-
-    let prec_left_param = prec_left_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
-
-    let prec_right_attr = attrs
-        .iter()
-        .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::prec_right));
-
-    let prec_right_param = prec_right_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
-
-    let prec_dynamic_attr = attrs
-        .iter()
-        .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::prec_dynamic));
-
-    let prec_dynamic_param = prec_dynamic_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
+    let precs = Precs::new(&attrs);
 
     let base_rule = match fields {
         Fields::Unit => {
@@ -349,57 +460,7 @@ fn gen_struct_or_variant(
         }),
     };
 
-    let rule = if let Some(Expr::Lit(lit)) = prec_param {
-        if prec_left_attr.is_some() || prec_right_attr.is_some() {
-            panic!("only one of prec, prec_left, and prec_right can be specified");
-        }
-
-        if let Lit::Int(i) = &lit.lit {
-            json!({
-                "type": "PREC",
-                "value": i.base10_parse::<u32>().unwrap(),
-                "content": base_rule
-            })
-        } else {
-            panic!("Expected integer literal for precedence");
-        }
-    } else if let Some(Expr::Lit(lit)) = prec_left_param {
-        if prec_right_attr.is_some() {
-            panic!("only one of prec, prec_left, and prec_right can be specified");
-        }
-
-        if let Lit::Int(i) = &lit.lit {
-            json!({
-                "type": "PREC_LEFT",
-                "value": i.base10_parse::<u32>().unwrap(),
-                "content": base_rule
-            })
-        } else {
-            panic!("Expected integer literal for precedence");
-        }
-    } else if let Some(Expr::Lit(lit)) = prec_right_param {
-        if let Lit::Int(i) = &lit.lit {
-            json!({
-                "type": "PREC_RIGHT",
-                "value": i.base10_parse::<u32>().unwrap(),
-                "content": base_rule
-            })
-        } else {
-            panic!("Expected integer literal for precedence");
-        }
-    } else if let Some(Expr::Lit(lit)) = prec_dynamic_param {
-        if let Lit::Int(i) = &lit.lit {
-            json!({
-                "type": "PREC_DYNAMIC",
-                "value": i.base10_parse::<u32>().unwrap(),
-                "content": base_rule
-            })
-        } else {
-            panic!("Expected integer literal for dynamic precedence");
-        }
-    } else {
-        base_rule
-    };
+    let rule = precs.apply(base_rule);
 
     out.insert(path, rule);
 }
@@ -481,6 +542,14 @@ pub fn generate_grammar(module: &ItemMod) -> Value {
                     "type": "CHOICE",
                     "members": members
                 });
+
+                let precs = Precs::new(&e.attrs);
+                if precs.prec_left_param.is_some() || precs.prec_right_param.is_some() {
+                    panic!(
+                        "The attributes `prec_left` and `prec_right` cannot be applied directly to an enum"
+                    );
+                }
+                let rule = precs.apply(rule);
 
                 rules_map.insert(e.ident.to_string(), rule);
 

@@ -168,6 +168,9 @@ enum SmallDigit {
 ### `#[rust_sitter::prec(...)]` / `#[rust_sitter::prec_left(...)]` / `#[rust_sitter::prec_right(...)]` / `#[rust_sitter::prec_dynamic(...)]`
 This annotation can be used to define a non/left/right-associative operator. This annotation takes a single parameter, which is the precedence level of the operator (higher binds more tightly).
 
+### `[#rust_sitter::immediate]`
+Usually, whitespace is optional before each token. This attribute means that the token will only match if there is no whitespace.
+
 ### `#[rust_sitter::skip(...)]`
 This annotation can be used to define a field that does not correspond to anything in the input string, such as some metadata. This annotation takes a single parameter, which is the value that should be used to populate that field at runtime.
 

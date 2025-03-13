@@ -50,7 +50,6 @@ pub fn build_parsers(root_file: &Path) {
         .map(|s| s.parse().unwrap_or(false))
         .unwrap_or(false);
     generate_grammars(root_file).iter().for_each(|grammar| {
-        panic!("{}", grammar.to_string());
         let (grammar_name, grammar_c) =
             generate_parser_for_grammar(&grammar.to_string(), GENERATED_SEMANTIC_VERSION).unwrap();
         let tempfile = tempfile::Builder::new()
@@ -570,6 +569,36 @@ mod tests {
                     #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
                     numbers: Vec<Spanned<i32>>,
                 }
+
+                #[rust_sitter::extra]
+                struct Whitespace {
+                    #[rust_sitter::leaf(pattern = r"\s")]
+                    _whitespace: (),
+                }
+            }
+        } {
+            m
+        } else {
+            panic!()
+        };
+
+        let grammar = generate_grammar(&m);
+        insta::assert_snapshot!(grammar);
+        generate_parser_for_grammar(&grammar.to_string(), GENERATED_SEMANTIC_VERSION).unwrap();
+    }
+
+    #[test]
+    fn immediate() {
+        let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
+            mod grammar {
+                #[rust_sitter::language]
+                pub struct StringFragment(
+                    #[rust_sitter::immediate]
+                    #[rust_sitter::prec(1)]
+                    #[rust_sitter::leaf(pattern = r#"[^"\\]+"#)]
+                    ()
+                );
 
                 #[rust_sitter::extra]
                 struct Whitespace {
