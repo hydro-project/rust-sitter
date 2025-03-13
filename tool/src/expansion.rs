@@ -322,6 +322,12 @@ fn gen_struct_or_variant(
 
     let prec_right_param = prec_right_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
 
+    let prec_dynamic_attr = attrs
+        .iter()
+        .find(|attr| attr.path() == &syn::parse_quote!(rust_sitter::prec_dynamic));
+
+    let prec_dynamic_param = prec_dynamic_attr.and_then(|a| a.parse_args_with(Expr::parse).ok());
+
     let base_rule = match fields {
         Fields::Unit => {
             let dummy_field = Field {
@@ -380,6 +386,16 @@ fn gen_struct_or_variant(
             })
         } else {
             panic!("Expected integer literal for precedence");
+        }
+    } else if let Some(Expr::Lit(lit)) = prec_dynamic_param {
+        if let Lit::Int(i) = &lit.lit {
+            json!({
+                "type": "PREC_DYNAMIC",
+                "value": i.base10_parse::<u32>().unwrap(),
+                "content": base_rule
+            })
+        } else {
+            panic!("Expected integer literal for dynamic precedence");
         }
     } else {
         base_rule

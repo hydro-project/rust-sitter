@@ -50,6 +50,7 @@ pub fn build_parsers(root_file: &Path) {
         .map(|s| s.parse().unwrap_or(false))
         .unwrap_or(false);
     generate_grammars(root_file).iter().for_each(|grammar| {
+        panic!("{}", grammar.to_string());
         let (grammar_name, grammar_c) =
             generate_parser_for_grammar(&grammar.to_string(), GENERATED_SEMANTIC_VERSION).unwrap();
         let tempfile = tempfile::Builder::new()
@@ -241,6 +242,88 @@ mod tests {
                         Box<Expression>
                     ),
                 }
+            }
+        } {
+            m
+        } else {
+            panic!()
+        };
+
+        let grammar = generate_grammar(&m);
+        insta::assert_snapshot!(grammar);
+        generate_parser_for_grammar(&grammar.to_string(), GENERATED_SEMANTIC_VERSION).unwrap();
+    }
+
+    #[test]
+    fn enum_conflicts_prec_dynamic() {
+        let m = if let syn::Item::Mod(m) = parse_quote! {
+            #[rust_sitter::grammar("test")]
+            mod grammar {
+                #[rust_sitter::language]
+                pub struct Program(pub Vec<Statement>);
+
+                pub enum Statement {
+                    ExpressionStatement(ExpressionStatement),
+                    IfStatement(Box<IfStatement>),
+                }
+
+                pub enum Expression {
+                    Identifier(Identifier),
+                    Number(Number),
+                    BinaryExpression(Box<BinaryExpression>),
+                }
+
+                #[rust_sitter::prec_left(1)]
+                pub struct BinaryExpression {
+                    pub expression: Expression,
+                    pub binary_expression_inner: BinaryExpressionInner,
+                    pub expression2: Expression,
+                }
+
+                pub enum BinaryExpressionInner {
+                    String(#[rust_sitter::leaf(text = "+")] ()),
+                    String2(#[rust_sitter::leaf(text = "-")] ()),
+                    String3(#[rust_sitter::leaf(text = "*")] ()),
+                    String4(#[rust_sitter::leaf(text = "/")] ()),
+                }
+
+                pub struct ExpressionStatement {
+                    pub expression: Expression,
+                    #[rust_sitter::leaf(text = ";")]
+                    pub _semicolon: (),
+                }
+
+                #[rust_sitter::prec_dynamic(1)]
+                pub struct IfStatement {
+                    #[rust_sitter::leaf(text = "if")]
+                    pub _if: (),
+                    #[rust_sitter::leaf(text = "(")]
+                    pub _lparen: (),
+                    pub expression: Expression,
+                    #[rust_sitter::leaf(text = ")")]
+                    pub _rparen: (),
+                    #[rust_sitter::leaf(text = "{")]
+                    pub _lbrace: (),
+                    pub statement: Statement,
+                    #[rust_sitter::leaf(text = "}")]
+                    pub _rbrace: (),
+                    pub if_statement_inner: Option<IfStatementElse>,
+                }
+
+                pub struct IfStatementElse {
+                    #[rust_sitter::leaf(text = "else")]
+                    pub _else: (),
+                    #[rust_sitter::leaf(text = "{")]
+                    pub _lbrace: (),
+                    pub statement: Statement,
+                    #[rust_sitter::leaf(text = "}")]
+                    pub _rbrace: (),
+                }
+
+                #[rust_sitter::word]
+                pub struct Identifier(#[rust_sitter::leaf(pattern = "[a-zA-Z_][a-zA-Z0-9_]*")] ());
+
+                pub struct Number(#[rust_sitter::leaf(pattern = "\\d+")] ());
             }
         } {
             m

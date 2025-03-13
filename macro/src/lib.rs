@@ -165,6 +165,28 @@ pub fn prec_right(
 }
 
 #[proc_macro_attribute]
+/// This macro is similar to [`prec`], but the given numerical precedence is applied at runtime instead
+/// of at parser generation time. This is only necessary when handling a conflict dynamically using
+/// [`conflicts`], and when there is a genuine ambiguity: multiple rules correctly
+/// match a given piece of code. In that event, Rust-sitter compares the total dynamic precedence
+/// associated with each rule, and selects the one with the highest total.
+/// 
+/// This is similar to dynamic precedence directives in Bison grammars.
+/// 
+/// ## Example
+/// ```ignore
+/// #[rust_sitter::prec_dynamic(1)]
+/// Cons(Box<Expr>, Box<Expr>)
+/// ```
+pub fn prec_dynamic(
+    _attr: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    item
+}
+
+
+#[proc_macro_attribute]
 /// On `Vec<_>` typed fields, specifies a non-terminal that should be parsed in between the elements.
 /// The [`rust_sitter::repeat`] annotation must be used on the field as well.
 ///
