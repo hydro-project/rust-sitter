@@ -235,3 +235,7 @@ pub struct CommaSeparatedExprs {
 
 ### `Box<T>`
 Boxes are automatically constructed around the inner type when parsing, but Rust Sitter doesn't do anything extra beyond that.
+
+## Debugging
+
+To view the generated grammar, you can set the `RUST_SITTER_EMIT_ARTIFACTS` environment variable to `true`. This will cause the generated grammar to be written to wherever cargo sets `OUT_DIR` (usually `target/debug/build/<crate>-<hash>/out`).
