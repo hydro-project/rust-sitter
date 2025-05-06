@@ -475,7 +475,7 @@ checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
 name = "rust-sitter"
-version = "0.4.4"
+version = "0.4.5"
 dependencies = [
  "insta",
  "rust-sitter-macro",
@@ -486,7 +486,7 @@ dependencies = [
 
 [[package]]
 name = "rust-sitter-common"
-version = "0.4.4"
+version = "0.4.5"
 dependencies = [
  "quote",
  "syn 2.0.98",
@@ -494,7 +494,7 @@ dependencies = [
 
 [[package]]
 name = "rust-sitter-example"
-version = "0.4.4"
+version = "0.4.5"
 dependencies = [
  "codemap",
  "codemap-diagnostic",
@@ -506,7 +506,7 @@ dependencies = [
 
 [[package]]
 name = "rust-sitter-macro"
-version = "0.4.4"
+version = "0.4.5"
 dependencies = [
  "insta",
  "proc-macro2",
@@ -518,7 +518,7 @@ dependencies = [
 
 [[package]]
 name = "rust-sitter-tool"
-version = "0.4.4"
+version = "0.4.5"
 dependencies = [
  "cc",
  "insta",

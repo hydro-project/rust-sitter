@@ -3,7 +3,7 @@ name = "rust-sitter"
 description = "A package for defining tree-sitter grammars alongside Rust logic"
 readme = "../README.md"
 repository = "https://github.com/hydro-project/rust-sitter"
-version = "0.4.4"
+version = "0.4.5"
 authors = ["Shadaj Laddad <shadaj@users.noreply.github.com>"]
 edition = "2021"
 license = "MIT"
@@ -21,7 +21,7 @@ tree-sitter-standard = ["tree-sitter-runtime-standard"]
 [dependencies]
 tree-sitter-runtime-c2rust = { package = "tree-sitter-c2rust", version = "0.25.2", optional = true }
 tree-sitter-runtime-standard = { package = "tree-sitter", version = "0.25.2", optional = true }
-rust-sitter-macro = { version = "0.4.4", path = "../macro" }
+rust-sitter-macro = { version = "0.4.5", path = "../macro" }
 
 [dev-dependencies]
 insta = "1.39"
