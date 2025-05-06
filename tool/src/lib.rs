@@ -120,7 +120,7 @@ pub fn build_parsers(root_file: &Path) {
         }
 
         let mut c_config = cc::Build::new();
-        c_config.include(&dir).include(&sysroot_dir);
+        c_config.std("c11").include(&dir).include(&sysroot_dir);
         c_config
             .flag_if_supported("-Wno-unused-label")
             .flag_if_supported("-Wno-unused-parameter")
