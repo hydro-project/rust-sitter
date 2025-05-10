@@ -1,0 +1,23 @@
+---
+source: example/src/handles.rs
+expression: "grammar::parse(\"1 + 2\")"
+---
+Err(
+    [
+        ParseError {
+            reason: FailedNode(
+                [
+                    ParseError {
+                        reason: UnexpectedToken(
+                            "+",
+                        ),
+                        start: 2,
+                        end: 3,
+                    },
+                ],
+            ),
+            start: 0,
+            end: 3,
+        },
+    ],
+)

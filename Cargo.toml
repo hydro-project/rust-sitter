@@ -6,4 +6,5 @@ members = [
   "tool",
   "example",
   "common",
+  "bench",
 ]

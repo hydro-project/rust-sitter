@@ -204,6 +204,23 @@ pub fn repeat(
     item
 }
 
+#[proc_macro_attribute]
+/// When using `Handle`s, this attribute specifies the arena type that the handle should be
+/// associated with. The struct must be declared as empty, and is populated by the macro.
+/// This attribute takes no arguments.
+///
+/// ## Example
+/// ```ignore
+/// #[rust_sitter::arena]
+/// pub struct AstArena;
+/// ```
+pub fn arena(
+    _attr: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    item
+}
+
 /// Mark a module to be analyzed for a Rust Sitter grammar. Takes a single, unnamed argument, which
 /// specifies the name of the grammar. This name must be unique across all Rust Sitter grammars within
 /// a compilation unit.
@@ -296,6 +313,42 @@ mod tests {
                             #[rust_sitter::leaf(text = "-")]
                             (),
                             Box<Expression>
+                        ),
+                    }
+                }
+            })?
+            .to_token_stream()
+            .to_string()
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn enum_recursive_handle() -> Result<()> {
+        insta::assert_snapshot!(rustfmt_code(
+            &expand_grammar(parse_quote! {
+                #[rust_sitter::grammar("test")]
+                mod grammar {
+                    #[rust_sitter::arena]
+                    #[derive(Default)]
+                    pub struct MyArena;
+
+                    #[rust_sitter::language]
+                    pub enum Expression {
+                        Number(
+                            #[rust_sitter::leaf(pattern = r"\d+", transform = |v| v.parse().unwrap())]
+                            i32
+                        ),
+                        Plus(
+                            #[rust_sitter::leaf(text = "+")]
+                            (),
+                            Handle<Expression>
+                        ),
+                        Neg(
+                            #[rust_sitter::leaf(text = "-")]
+                            (),
+                            rust_sitter::Handle<Expression>
                         ),
                     }
                 }
