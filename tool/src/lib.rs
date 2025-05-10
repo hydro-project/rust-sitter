@@ -59,7 +59,9 @@ pub fn build_parsers(root_file: &Path) {
 
         let dir = if emit_artifacts {
             let grammar_dir = Path::new(out_dir.as_str()).join(format!("grammar_{grammar_name}",));
-            std::fs::remove_dir_all(&grammar_dir).expect("Couldn't clear old artifacts");
+            if grammar_dir.is_dir() {
+                std::fs::remove_dir_all(&grammar_dir).expect("Couldn't clear old artifacts");
+            }
             std::fs::DirBuilder::new()
                 .recursive(true)
                 .create(grammar_dir.clone())
