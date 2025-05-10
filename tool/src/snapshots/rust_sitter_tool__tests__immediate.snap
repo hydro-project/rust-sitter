@@ -1,0 +1,5 @@
+---
+source: tool/src/lib.rs
+expression: grammar
+---
+{"name":"test","word":null,"rules":{"source_file":{"type":"SEQ","members":[{"type":"FIELD","name":"0","content":{"type":"SYMBOL","name":"StringFragment_0"}}]},"StringFragment_0":{"type":"IMMEDIATE_TOKEN","content":{"type":"PREC","value":1,"content":{"type":"PATTERN","value":"[^\"\\\\]+"}}},"StringFragment":{"type":"SEQ","members":[{"type":"FIELD","name":"0","content":{"type":"SYMBOL","name":"StringFragment_0"}}]},"Whitespace__whitespace":{"type":"PATTERN","value":"\\s"},"Whitespace":{"type":"SEQ","members":[{"type":"FIELD","name":"_whitespace","content":{"type":"SYMBOL","name":"Whitespace__whitespace"}}]}},"extras":[{"type":"SYMBOL","name":"Whitespace"}]}
